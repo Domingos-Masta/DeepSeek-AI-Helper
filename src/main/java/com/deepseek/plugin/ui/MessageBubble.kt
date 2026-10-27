@@ -34,32 +34,33 @@ import javax.swing.border.EmptyBorder
 import javax.swing.text.DefaultCaret
 
 /**
- * 深色扁平化聊天消息气泡组件。
+ * Dark flat chat message bubble component.
  *
- * 独立自绘单位 — 每个 MessageBubble 自行绘制圆角背景，
- * 不依赖父容器背景板，避免一个气泡变化时影响其他气泡显示。
+ * Self-drawn unit — each MessageBubble draws its own rounded background and does
+ * not rely on the parent container background, so changes to one bubble do not
+ * affect how other bubbles are displayed.
  *
- * 设计语言：
+ * Design language:
  * ─────────────────────────────────────────────
- * 【用户消息】 → 右对齐卡片
+ * [User message] → right-aligned card
  *
  *  ┌──────────────────────────────────────┐
- *  │  (n)  14:32                     🗑  │  ← 橙色头像 + 时间 + 删除
- *  │  ☕ index.js   ☕ app.css             │  ← 文件标签
- *  │  ──────────────────────────────────  │  ← 分割线
- *  │  正文内容...                          │  ← 白色正文
+ *  │  (n)  14:32                     🗑  │  ← orange avatar + time + delete
+ *  │  ☕ index.js   ☕ app.css             │  ← file tags
+ *  │  ──────────────────────────────────  │  ← divider
+ *  │  Body content...                     │  ← white body text
  *  └──────────────────────────────────────┘
  *
  * ─────────────────────────────────────────────
- * 【AI 回复】   → 左对齐卡片
+ * [AI reply]   → left-aligned card
  *
  *  ┌──────────────────────────────────────┐
- *  │  ○  DP Helper                        │  ← 环形图标 + 名称
+ *  │  ○  DP Helper                        │  ← ring icon + name
  *  │                                      │
- *  │  回复内容...                          │
+ *  │  Reply content...                    │
  *  │                                      │
  *  │  ┌────────────────────────┐          │
- *  │  │  代码块 (CodeBlockCard)  │          │
+ *  │  │  Code block (CodeBlockCard) │      │
  *  │  └────────────────────────┘          │
  *  └──────────────────────────────────────┘
  */
@@ -68,20 +69,20 @@ class MessageBubble(
     val role: Role,
     content: String = "",
     segments: List<ResponseSegment>? = null,
-    /** 用户消息右上角删除按钮的回调（传 null 则不显示删除按钮） */
+    /** Callback for the delete button at the top right of user messages (pass null to hide the delete button). */
     private val onDelete: (() -> Unit)? = null,
-    /** 代码文件标签列表（显示在用户消息中，带 ☕ 图标） */
+    /** List of code file tags (shown in user messages with a ☕ icon). */
     private val fileTabs: List<String> = emptyList(),
-    /** 模型的深度思考过程（reasoning_content），仅 ASSISTANT 角色使用 */
+    /** The model's deep reasoning process (reasoning_content), used only by the ASSISTANT role. */
     private val reasoning: String? = null
 ) : JPanel(GridBagLayout()) {
 
-    /** 消息创建时间（HH:mm 格式） */
+    /** Message creation time (HH:mm format). */
     val timestamp: String = formatTimestamp(System.currentTimeMillis())
 
-    /** Streaming: 用于增量追加 token 的文本区域（无滚动面板，随内容自然撑开）
-     *  重写 getPreferredSize() 以正确反映 lineWrap 后的视觉行数，
-     *  避免一长段文本(无换行符)只算1行导致气泡被压扁 */
+    /** Streaming: text area for incrementally appending tokens (no scroll pane; it grows naturally with content).
+     *  Overrides getPreferredSize() to correctly reflect the visual line count after lineWrap,
+     *  preventing a long paragraph (with no newlines) from being counted as one line and squashing the bubble. */
     val streamTextArea: JBTextArea? = if (role == Role.STREAMING)
         object : JBTextArea() {
             override fun getPreferredSize(): Dimension {
@@ -115,14 +116,14 @@ class MessageBubble(
         STREAMING
     }
 
-    /** 当前气泡画圆角背景的锚点方向（USER=左对齐，ASSISTANT=左对齐） */
+    /** Anchor direction for drawing this bubble's rounded background (USER=left-aligned, ASSISTANT=left-aligned). */
     private val anchor: Int
         get() = GridBagConstraints.WEST
 
-    // ── 可视化内容面板（即圆角矩形内的全部内容）──
+    // ── Visual content panel (everything inside the rounded rectangle) ──
     private lateinit var contentPanel: JPanel
 
-    /** 思考过程面板的展开/收起状态 */
+    /** Expanded/collapsed state of the reasoning panel. */
     private var reasoningExpanded = false
 
     init {
@@ -137,7 +138,7 @@ class MessageBubble(
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  自绘圆角背景 — 仅绘制在 contentPanel 区域，不占用对齐留白
+    //  Self-drawn rounded background — drawn only in the contentPanel area, not occupying the alignment padding
     // ════════════════════════════════════════════════════════════════
 
     override fun paintComponent(g: Graphics) {
@@ -146,16 +147,23 @@ class MessageBubble(
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
         val arc = 18
         val b = contentPanel.bounds
-        g2.color = PluginTheme.background()
+        // User messages get a subtle accent surface (Copilot-style); assistant messages stay on the panel background.
+        g2.color = when (role) {
+            Role.USER -> PluginTheme.color(0xEAF3FF, 0x2A3547)
+            else -> PluginTheme.background()
+        }
         g2.fillRoundRect(b.x, b.y, b.width, b.height, arc, arc)
-        g2.color = PluginTheme.color(0xE8EAED, 0x3A3A3A)
+        g2.color = when (role) {
+            Role.USER -> PluginTheme.color(0xC7DCFF, 0x3E4C63)
+            else -> PluginTheme.color(0xE8EAED, 0x3A3A3A)
+        }
         g2.drawRoundRect(b.x, b.y, b.width, b.height, arc, arc)
         g2.dispose()
     }
 
     /**
-     * 将 [contentPanel] 添加到本组件（GridBagLayout）并设置锚点对齐。
-     * 由各 setupXxxMessage 方法在构建完 contentPanel 后调用。
+     * Adds [contentPanel] to this component (GridBagLayout) with anchor alignment.
+     * Called by each setupXxxMessage method after building contentPanel.
      */
     private fun attachContent() {
         val c = GridBagConstraints().apply {
@@ -167,10 +175,10 @@ class MessageBubble(
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  用户消息 — 右对齐卡片：头像 + 时间 + 删除 + 文件标签 + 分割线 + 正文
+    //  User message — right-aligned card: avatar + time + delete + file tags + divider + body
     // ════════════════════════════════════════════════════════════════
 
-    /** 紫色圆形 + toolwindow.svg 居中绘制（按比例缩放） */
+    /** Purple circle + toolwindow.svg drawn centered (scaled proportionally). */
     private fun createUserAvatar(): JPanel {
         val icon = IconLoader.getIcon("/icons/toolwindow.svg", MessageBubble::class.java)
         return object : JPanel() {
@@ -202,16 +210,16 @@ class MessageBubble(
     }
 
     private fun setupUserMessage(content: String) {
-        // ── 头像 ──
+        // ── Avatar ──
         val avatar = createUserAvatar()
 
-        // ── 时间戳 ──
+        // ── Timestamp ──
         val timeLabel = JLabel(timestamp).apply {
             font = font.deriveFont(Font.PLAIN, 11f)
             foreground = PluginTheme.textMuted()
         }
 
-        // ── 删除按钮（InplaceButton：原生 hover 高亮 + 点击反馈）
+        // ── Delete button (InplaceButton: native hover highlight + click feedback) ──
         val deleteBtn = InplaceButton(
             I18n.tr("bubble.delete"),
             AllIcons.Actions.Close,
@@ -220,7 +228,7 @@ class MessageBubble(
             isVisible = onDelete != null
         }
 
-        // ── 头部行 ──
+        // ── Header row ──
         val headerLeft = JPanel(FlowLayout(FlowLayout.LEFT, 6, 0)).apply {
             isOpaque = false
             add(avatar)
@@ -237,7 +245,7 @@ class MessageBubble(
             add(deleteBtn, BorderLayout.EAST)
         }
 
-        // ── 文件标签行 ──
+        // ── File tag row ──
         val fileTabRow = if (fileTabs.isNotEmpty()) {
             val panel = JPanel(FlowLayout(FlowLayout.LEFT, 6, 0)).apply {
                 isOpaque = false
@@ -257,7 +265,7 @@ class MessageBubble(
             panel
         } else null
 
-        // ── 分割线 ──
+        // ── Divider ──
         val divider = JPanel().apply {
             preferredSize = Dimension(1, 1)
             maximumSize = Dimension(Int.MAX_VALUE, 1)
@@ -265,7 +273,7 @@ class MessageBubble(
             isOpaque = true
         }
 
-        // ── 正文 ──
+        // ── Body ──
         val textArea = JTextArea(content).apply {
             isEditable = false
             isFocusable = false
@@ -281,7 +289,7 @@ class MessageBubble(
             border = EmptyBorder(0, 0, 0, 0)
         }
 
-        // ── 组装内容面板 ──
+        // ── Assemble the content panel ──
         contentPanel = JPanel().apply {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
             isOpaque = false
@@ -301,7 +309,7 @@ class MessageBubble(
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  AI 回复 — 左对齐卡片 + 环形图标 + 名称 + 内容块
+    //  AI reply — left-aligned card + ring icon + name + content block
     // ════════════════════════════════════════════════════════════════
 
     private fun setupAssistantMessage(
@@ -361,7 +369,7 @@ class MessageBubble(
             contentBody.add(Box.createVerticalStrut(2))
         }
 
-        // ── 中心面板：思考过程(可选) + 最终回答 ──
+        // ── Center panel: reasoning (optional) + final answer ──
         val centerPanel = JPanel().apply {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
             isOpaque = false
@@ -384,19 +392,19 @@ class MessageBubble(
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  可折叠「思考过程」面板
+    //  Collapsible "Reasoning process" panel
     // ════════════════════════════════════════════════════════════════
 
     /**
-     * 创建可折叠的思考过程面板，位于 AI 回复头部与正文之间。
-     * - 折叠时：显示 "🧠 思考过程  ▸  共 xxx 字"
-     * - 展开时：显示思考内容（灰色底色 + 灰色文字），可再次折叠
+     * Creates a collapsible reasoning panel between the AI reply header and body.
+     * - Collapsed: shows "🧠 Reasoning process  ▸  xxx characters total"
+     * - Expanded: shows the reasoning content (gray background + gray text) and can be collapsed again
      */
     private fun createReasoningPanel(reasoningText: String): JPanel {
         val reasoningBody = JPanel(BorderLayout())
         reasoningBody.isOpaque = false
 
-        // ── 内容区域（初始隐藏）──
+        // ── Content area (initially hidden) ──
         val contentArea = JBTextArea(reasoningText.trim()).apply {
             isEditable = false
             lineWrap = true
@@ -410,7 +418,7 @@ class MessageBubble(
             isVisible = false
         }
 
-        // ── 头部行：▶ 思考过程  共 xxx 字 ──
+        // ── Header row: ▶ Reasoning process  xxx characters total ──
         val toggleArrow = JLabel("\u25B6") // ▶ (collapsed)
         toggleArrow.font = toggleArrow.font.deriveFont(10f)
         toggleArrow.foreground = PluginTheme.textHeading()
@@ -428,14 +436,14 @@ class MessageBubble(
 
         reasoningBody.add(headerPanel, BorderLayout.NORTH)
 
-        // ── 点击切换展开/收起 ──
+        // ── Click to toggle expand/collapse ──
         reasoningExpanded = false
         val toggleListener = object : java.awt.event.MouseAdapter() {
             override fun mouseClicked(e: java.awt.event.MouseEvent) {
                 reasoningExpanded = !reasoningExpanded
                 contentArea.isVisible = reasoningExpanded
                 toggleArrow.text = if (reasoningExpanded) "\u25BC" else "\u25B6" // ▼ / ▶
-                // 触发父容器重新布局
+                // Trigger the parent container to re-layout
                 reasoningBody.revalidate()
                 var parent = reasoningBody.parent
                 while (parent != null) {
@@ -448,7 +456,7 @@ class MessageBubble(
 
         reasoningBody.add(contentArea, BorderLayout.CENTER)
 
-        // 整体包一层，保证 BoxLayout 中纵向布局正确
+        // Wrap everything in one layer to keep the vertical layout correct inside BoxLayout
         val wrapper = JPanel(BorderLayout()).apply {
             isOpaque = false
             alignmentX = Component.LEFT_ALIGNMENT
@@ -459,7 +467,7 @@ class MessageBubble(
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  AI 品牌环形图标
+    //  AI brand ring icon
     // ════════════════════════════════════════════════════════════════
 
     private fun createRingIcon(): JPanel {
@@ -507,7 +515,7 @@ class MessageBubble(
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  流式响应区域 — 轻量思考动画
+    //  Streaming response area — lightweight thinking animation
     // ════════════════════════════════════════════════════════════════
 
     private fun setupStreamingArea() {
@@ -541,7 +549,7 @@ class MessageBubble(
             foreground = PluginTheme.textPrimary()
             (caret as DefaultCaret).updatePolicy = DefaultCaret.ALWAYS_UPDATE
             alignmentX = Component.LEFT_ALIGNMENT
-            text = "... 思考中 \u25D0"
+            text = "... Thinking \u25D0"
         }
 
         contentPanel = JPanel(BorderLayout()).apply {
@@ -555,7 +563,7 @@ class MessageBubble(
     }
 
     companion object {
-        /** 格式化时间戳为 HH:mm */
+        /** Formats the timestamp as HH:mm. */
         private fun formatTimestamp(millis: Long): String {
             val fmt = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
             return fmt.format(java.util.Date(millis))

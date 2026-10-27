@@ -111,7 +111,7 @@ class QuestionNavSidebar : JPanel(null) {
     }
 
     // ══════════════════════════════════════════════════════════════════
-    //  Layout — 弹性均匀分布
+    //  Layout — flexible even distribution
     // ══════════════════════════════════════════════════════════════════
 
     override fun doLayout() {

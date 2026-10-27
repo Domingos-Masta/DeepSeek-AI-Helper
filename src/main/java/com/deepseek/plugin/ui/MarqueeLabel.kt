@@ -14,30 +14,30 @@ import javax.swing.Timer
 import javax.swing.UIManager
 
 /**
- * 跑马灯标签 — 文本从右向左自动循环滚动。
+ * Marquee label — text scrolls horizontally from right to left in a loop.
  *
- * - 仅在文本宽度超过组件宽度时启动滚动
- * - 鼠标悬停暂停，移出继续
- * - 组件从容器移除时自动停止 Timer
+ * - Scrolling only starts when the text is wider than the component
+ * - Pauses on mouse hover and resumes on exit
+ * - The Timer stops automatically when the component is removed from its container
  */
 class MarqueeLabel(
-    /** 显示的文本 */
+    /** Text to display. */
     private var displayText: String
 ) : JComponent() {
 
-    /** 当前绘制偏移量（像素），负值向左移 */
+    /** Current draw offset in pixels; negative values shift left. */
     private var scrollOffset = 0f
 
-    /** 驱动滚动的 Swing Timer */
+    /** Swing Timer that drives the scrolling. */
     private var scrollTimer: Timer? = null
 
-    /** 鼠标是否悬停 */
+    /** Whether the mouse is currently hovering. */
     private var hovered = false
 
-    /** 文本像素宽度（缓存，避免每帧都算） */
+    /** Cached text width in pixels, to avoid recomputing every frame. */
     private var textPxWidth = 0
 
-    /** 是否需要滚动 */
+    /** Whether scrolling is needed. */
     private val needsScroll: Boolean
         get() {
             updateTextWidth()
@@ -46,7 +46,7 @@ class MarqueeLabel(
 
     init {
         isOpaque = false
-        // JComponent 没有默认字体，显式设置以便 deriveFont() 可用
+        // JComponent has no default font; set one explicitly so deriveFont() works
         font = UIManager.getFont("Label.font") ?: Font("Dialog", Font.PLAIN, 12)
         cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
 
@@ -63,14 +63,14 @@ class MarqueeLabel(
         })
     }
 
-    // ── 文本宽度缓存 ──
+    // ── Text width cache ──
 
     private fun updateTextWidth() {
         val fm: FontMetrics = getFontMetrics(font)
         textPxWidth = fm.stringWidth(displayText)
     }
 
-    // ── Timer 管理 ──
+    // ── Timer management ──
 
     private fun ensureTimerRunning() {
         if (!needsScroll) return
@@ -78,7 +78,7 @@ class MarqueeLabel(
         scrollOffset = width.toFloat()
         scrollTimer = Timer(30) {
             scrollOffset -= 1.5f
-            // 文本完全移出左边界 → 从右侧重新入
+            // Text fully exits the left edge → re-enter from the right
             if (scrollOffset < -textPxWidth) {
                 scrollOffset = width.toFloat()
             }
@@ -91,7 +91,7 @@ class MarqueeLabel(
         scrollTimer = null
     }
 
-    // ── 生命周期 ──
+    // ── Lifecycle ──
 
     override fun addNotify() {
         super.addNotify()
@@ -103,7 +103,7 @@ class MarqueeLabel(
         super.removeNotify()
     }
 
-    // ── 尺寸提示：让布局管理器按文本宽度给空间 ──
+    // ── Size hint: let the layout manager reserve space by text width ──
 
     override fun getPreferredSize(): Dimension {
         updateTextWidth()
@@ -116,14 +116,14 @@ class MarqueeLabel(
         return Dimension(20, fm.height + 4)
     }
 
-    // ── 绘制 ──
+    // ── Painting ──
 
     override fun paintComponent(g: Graphics) {
         super.paintComponent(g)
 
         if (displayText.isEmpty()) return
 
-        // 首次绘制或宽度变化后启动 Timer
+        // Start the Timer on first paint or after the width changes
         if (!hovered && needsScroll && (scrollTimer == null || !scrollTimer!!.isRunning)) {
             ensureTimerRunning()
         }
@@ -139,16 +139,16 @@ class MarqueeLabel(
 
             val fm: FontMetrics = g2d.fontMetrics
             val textH = fm.ascent
-            // 垂直居中
+            // Vertically centered
             val y = (height - fm.height) / 2f + textH
 
             if (!needsScroll) {
-                // 文本不长 → 静态居中绘制
+                // Text is not long → draw it statically and centered
                 g2d.drawString(displayText, 4f, y)
             } else {
-                // 绘制主文本
+                // Draw the main text
                 g2d.drawString(displayText, scrollOffset, y)
-                // 如果尾部有空白 → 补绘一个副本实现无缝循环
+                // If there is trailing blank space → draw a duplicate for a seamless loop
                 if (scrollOffset + textPxWidth < width) {
                     g2d.drawString(displayText, scrollOffset + textPxWidth + width, y)
                 }
@@ -158,12 +158,12 @@ class MarqueeLabel(
         }
     }
 
-    // ── 外部接口 ──
+    // ── Public API ──
 
-    /** 更新文本并重启滚动（若需要） */
+    /** Updates the text and restarts scrolling if needed. */
     fun setText(newText: String) {
         displayText = newText
-        textPxWidth = 0  // 强制重算
+        textPxWidth = 0  // force recompute
         stopTimer()
         if (needsScroll) ensureTimerRunning()
         repaint()

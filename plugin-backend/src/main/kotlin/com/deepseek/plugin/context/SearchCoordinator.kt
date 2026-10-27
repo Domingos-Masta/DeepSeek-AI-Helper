@@ -4,17 +4,17 @@ import com.deepseek.plugin.search.ToolUseEngine
 import com.intellij.openapi.project.Project
 
 /**
- * 统一搜索路由协调器。
+ * Unified search-routing coordinator.
  *
- * 根據用户问题类型自动路由到合适的检索引擎：
- * - 代码查询（含类名/函数名/代码关键词）→ ToolUseEngine（Agentic Search：grep/glob/read 多轮）
- * - 文档查询（自然语言/配置/文档）→ RagRetriever（Lucene BM25 全文检索）
- * - 补充：ProjectContextProvider（类名后缀关联映射）
+ * Automatically routes to the appropriate retrieval engine based on the type of user question:
+ * - Code query (contains class/function names or code keywords) → ToolUseEngine (Agentic Search: multi-round grep/glob/read)
+ * - Document query (natural language/config/docs) → RagRetriever (Lucene BM25 full-text search)
+ * - Supplement: ProjectContextProvider (class-name suffix association mapping)
  *
- * 用法：
+ * Usage:
  *   val coordinator = SearchCoordinator(project)
- *   val result = coordinator.search("用户关于 getUserById 的问题")
- *   // result.contextText 是格式化后的上下文文本，可直接注入 system prompt
+ *   val result = coordinator.search("a user question about getUserById")
+ *   // result.contextText is the formatted context text that can be injected directly into the system prompt
  */
 class SearchCoordinator(
     private val project: Project,
@@ -27,16 +27,16 @@ class SearchCoordinator(
     private val contextProvider = ProjectContextProvider(project)
 
     /**
-     * 搜索结果封装。
-     * @param contextText 格式化后的上下文文本，可直接注入 LLM system prompt
+     * Search result wrapper.
+     * @param contextText Formatted context text that can be injected directly into the LLM system prompt
      */
     data class SearchResult(val contextText: String)
 
     /**
-     * 执行搜索：自动判断查询类型并路由。
+     * Executes the search: automatically determines the query type and routes accordingly.
      *
-     * @param userMessage 用户原始问题
-     * @return SearchResult 包含格式化上下文，无结果时 contextText 为空字符串
+     * @param userMessage The user's original question
+     * @return SearchResult containing the formatted context; contextText is an empty string when there are no results
      */
     fun search(userMessage: String, useReadOnlyToolLoop: Boolean = false): SearchResult {
         val settings = com.deepseek.plugin.settings.DeepSeekSettings.instance
@@ -46,7 +46,7 @@ class SearchCoordinator(
         val docCtx: String
 
         if (isCode && settings.agenticSearchEnabled) {
-            // 代码查询 → Agentic Search（单轮 grep 搜索）
+            // Code query → Agentic Search (single-round grep search)
             val result = toolUseEngine.execute(
                 userMessage = userMessage,
                 singleRound = !useReadOnlyToolLoop
@@ -55,26 +55,26 @@ class SearchCoordinator(
             docCtx = ""
         } else {
             codeCtx = ""
-            // 非代码查询或代码搜索被禁用 → RAG 文档检索
+            // Non-code query or code search disabled → RAG document retrieval
             docCtx = ragRetriever.retrieve(userMessage)
         }
 
-        // 补充：类名关联上下文（适用于所有查询）
+        // Supplement: class-name association context (applies to all queries)
         val projectCtx = contextProvider.getRelatedContext(userMessage)
 
         val combined = buildString {
             if (codeCtx.isNotBlank()) {
-                appendLine("### Agentic Search 结果")
+                appendLine("### Agentic Search results")
                 appendLine(codeCtx)
                 appendLine()
             }
             if (docCtx.isNotBlank()) {
-                appendLine("### 文档检索结果")
+                appendLine("### Document search results")
                 appendLine(docCtx)
                 appendLine()
             }
             if (projectCtx.isNotBlank()) {
-                appendLine("### 相关类文件")
+                appendLine("### Related class files")
                 appendLine(projectCtx)
                 appendLine()
             }
@@ -84,19 +84,19 @@ class SearchCoordinator(
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  查询类型判断
+    //  Query type detection
     // ════════════════════════════════════════════════════════════════
 
     /**
-     * 判断用户查询是否与代码相关。
-     * 代码查询使用 Agentic Search，非代码查询使用 RAG。
+     * Determines whether the user's query is code-related.
+     * Code queries use Agentic Search; non-code queries use RAG.
      */
     private fun isCodeQuery(query: String): Boolean {
-        // 包含 CamelCase 类名/函数名
+        // Contains CamelCase class/function names
         val camelCasePattern = Regex("""\b[A-Z][a-zA-Z0-9]{2,}\b""")
         if (camelCasePattern.containsMatchIn(query)) return true
 
-        // 包含代码关键词
+        // Contains code keywords
         val codeKeywords = listOf(
             "class", "function", "method", "interface", "enum", "annotation",
             "import", "package", "extends", "implements", "override",
@@ -104,9 +104,9 @@ class SearchCoordinator(
             "dto", "vo", "po", "bo", "config", "handler", "util",
             "getter", "setter", "constructor", "bean", "component",
             "api", "rest", "endpoint", "route", "mapping",
-            "数据库", "表", "字段", "接口", "实现", "继承",
+            "database", "table", "field", "interface", "implementation", "inheritance",
             "get", "set", "find", "search", "query", "update", "save", "delete", "create",
-            // 新增：框架/技术关键词
+            // Added: framework/technology keywords
             "spring", "mybatis", "jpa", "hibernate", "controller", "service",
             "Autowired", "RequestMapping", "GetMapping", "PostMapping"
         )
@@ -115,7 +115,7 @@ class SearchCoordinator(
             if (queryLower.contains(kw)) return true
         }
 
-        // 包含以 ., #, :: 连接的可能代码路径
+        // Contains possible code paths joined with ., #, ::
         val codePathPattern = Regex("""[\w.]+\.\w+""")
         if (codePathPattern.containsMatchIn(query)) return true
 

@@ -43,7 +43,7 @@ class ProjectContextProvider(private val project: Project) {
     /** Cache: simpleName (lowercase) → SourceInfo */
     private var cache: Map<String, SourceInfo>? = null
     private var cacheTimestamp: Long = 0
-    /** 每个文件的时间戳快照 — 用于增量检测：key = file path, value = timeStamp */
+    /** Timestamp snapshot per file — used for incremental detection: key = file path, value = timestamp */
     private val fileTimestamps = mutableMapOf<String, Long>()
 
     /**
@@ -80,22 +80,22 @@ class ProjectContextProvider(private val project: Project) {
 
     private fun getIndex(): Map<String, SourceInfo> {
         val now = System.currentTimeMillis()
-        // 60000ms (1 min) 内不触发全量重建
+        // Do not trigger a full rebuild within 60000ms (1 min)
         if (cache != null && (now - cacheTimestamp) < 60_000) {
-            // 增量检查：只在文件时间戳变化时重新读取变更文件
+            // Incremental check: re-read changed files only when their timestamps change
             val dirtyPaths = detectDirtyFiles()
             if (dirtyPaths.isEmpty()) return cache!!
-            // 增量更新：只重新读取 dirty 文件
+            // Incremental update: re-read only dirty files
             incrementalUpdate(dirtyPaths)
             cacheTimestamp = now
             return cache!!
         }
 
-        // 全量重建
+        // Full rebuild
         return rebuildIndex(now)
     }
 
-    /** 检测哪些源文件的时间戳发生了变化 */
+    /** Detects which source files' timestamps have changed */
     private fun detectDirtyFiles(): Set<String> {
         val dirty = mutableSetOf<String>()
         try {
@@ -125,7 +125,7 @@ class ProjectContextProvider(private val project: Project) {
         }
     }
 
-    /** 全量重建索引 */
+    /** Fully rebuilds the index */
     private fun rebuildIndex(now: Long): Map<String, SourceInfo> {
         val result = mutableMapOf<String, SourceInfo>()
         fileTimestamps.clear()
@@ -138,7 +138,7 @@ class ProjectContextProvider(private val project: Project) {
         return result
     }
 
-    /** 增量更新：只重新读取 dirty 列表中的文件 */
+    /** Incremental update: re-reads only the files in the dirty list */
     private fun incrementalUpdate(dirtyPaths: Set<String>) {
         if (cache == null) return
         val mutableCache = cache!!.toMutableMap()
@@ -146,11 +146,11 @@ class ProjectContextProvider(private val project: Project) {
         val rootPaths = contentRoots.map { it.path }
 
         for (dirtyPath in dirtyPaths) {
-            // 找到这个文件所属的 root
+            // Find the root this file belongs to
             val rootPath = rootPaths.firstOrNull { dirtyPath.startsWith(it) } ?: continue
             val vf = com.intellij.openapi.vfs.LocalFileSystem.getInstance().findFileByPath(dirtyPath) ?: continue
             if (!vf.exists()) {
-                // 文件被删除 → 从缓存中移除
+                // File deleted → remove from cache
                 val key = vf.nameWithoutExtension.lowercase()
                 mutableCache.remove(key)
                 fileTimestamps.remove(dirtyPath)
@@ -183,7 +183,7 @@ class ProjectContextProvider(private val project: Project) {
                 if (content.isNotEmpty()) {
                     result[simpleName.lowercase()] = SourceInfo(simpleName, relativePath, content)
                 }
-                // 记录时间戳用于增量检测
+                // Record the timestamp for incremental detection
                 fileTimestamps[child.path] = child.timeStamp
             }
         }
@@ -196,7 +196,7 @@ class ProjectContextProvider(private val project: Project) {
 
     private fun readContent(file: VirtualFile): String {
         return try {
-            // PSI 访问必须在 ReadAction 中执行，确保线程安全
+            // PSI access must run inside a ReadAction to ensure thread safety
             val psiText = ApplicationManager.getApplication().runReadAction(Computable<String> {
                 val psiFile = PsiManager.getInstance(project).findFile(file)
                 psiFile?.text
@@ -283,7 +283,7 @@ class ProjectContextProvider(private val project: Project) {
     private fun buildContextString(files: List<SourceInfo>): String {
         if (files.isEmpty()) return ""
         val sb = StringBuilder()
-        sb.appendLine("以下是与当前对话相关的项目文件代码，供参考：\n")
+        sb.appendLine("Below is the project file code relevant to the current conversation, for reference:\n")
         for (f in files.distinctBy { it.simpleName }.take(12)) {
             val lang = if (f.relativePath.endsWith(".kt")) "kotlin" else "java"
             sb.appendLine("`${f.relativePath}`:")

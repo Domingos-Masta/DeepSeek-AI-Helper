@@ -8,22 +8,22 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * 本地 Claude Code / Codex CLI Agent 进程封装（第四种模式「Claude/Codex」）。
+ * Process wrapper for the local Claude Code / Codex CLI Agent (the fourth mode "Claude/Codex").
  *
- * spawn 官方 CLI 非交互模式，stdin 喂 prompt，stdout 按行解析 JSON 事件流：
- *  - claude：`claude -p --input-format text --output-format stream-json ...`
- *  - codex：`codex exec --json ...`
+ * Spawns the official CLI in non-interactive mode, feeds the prompt via stdin, and parses the JSON event stream from stdout line by line:
+ *  - claude: `claude -p --input-format text --output-format stream-json ...`
+ *  - codex: `codex exec --json ...`
  *
- * 凭据由 CLI 自行读取本地登录态（~/.claude、~/.codex），插件不注入密钥。
+ * Credentials are read by the CLI itself from the local login state (~/.claude, ~/.codex); the plugin injects no secrets.
  *
- * @param cliType         "claude" 或 "codex"
- * @param projectDir      CLI 工作目录（项目根）
- * @param permissionMode  acceptEdits(仅文件编辑) | bypass(跳过全部权限) | plan(仅计划)
- * @param prompt          用户问题
- * @param onText          增量文本（后台线程调用，需自行切 EDT）
- * @param onThinking      思考内容（可空）
- * @param onComplete      正常完成（finalText）
- * @param onError         错误（message）
+ * @param cliType         "claude" or "codex"
+ * @param projectDir      CLI working directory (project root)
+ * @param permissionMode  acceptEdits(file edits only) | bypass(skip all permissions) | plan(plan only)
+ * @param prompt          the user's question
+ * @param onText          incremental text (called on a background thread; caller must switch to EDT)
+ * @param onThinking      thinking content (nullable)
+ * @param onComplete      normal completion (finalText)
+ * @param onError         error (message)
  */
 class CliAgentProcess(
     private val cliType: String,
@@ -43,7 +43,7 @@ class CliAgentProcess(
         private val isWindows = System.getProperty("os.name").lowercase().contains("win")
         private const val MAX_ERROR_LENGTH = 8_000
 
-        /** 在 PATH 中查找可执行文件（Windows 自动尝试 .exe/.cmd/.bat） */
+        /** Finds an executable on PATH (on Windows also tries .exe/.cmd/.bat) */
         fun findExecutable(name: String): String? {
             val direct = File(name)
             if ((direct.isAbsolute || direct.parent != null) && isUsableExecutable(direct)) {
@@ -100,7 +100,7 @@ class CliAgentProcess(
     @Volatile
     private var eventError: String? = null
 
-    /** 当前进程句柄（供 ChatState 停止用） */
+    /** Current process handle (used by ChatState to stop) */
     val currentProcess: Process? get() = process
 
     fun start() {
@@ -116,12 +116,12 @@ class CliAgentProcess(
         val proc = try {
             pb.start()
         } catch (e: Exception) {
-            onError("启动 ${cliType} CLI 失败: ${e.message}")
+            onError("Failed to start ${cliType} CLI: ${e.message}")
             return
         }
         process = proc
 
-        // stderr 线程（避免阻塞）
+        // stderr thread (avoids blocking)
         val stderrThread = Thread({
             try {
                 proc.errorStream.bufferedReader(Charsets.UTF_8).use { r ->
@@ -139,7 +139,7 @@ class CliAgentProcess(
             } catch (_: Exception) { }
         }, "cli-agent-stderr").apply { isDaemon = true; start() }
 
-        // stdout 解析线程
+        // stdout parsing thread
         val stdoutThread = Thread({
             try {
                 proc.inputStream.bufferedReader(Charsets.UTF_8).use { r ->
@@ -152,7 +152,7 @@ class CliAgentProcess(
             } catch (_: Exception) { }
         }, "cli-agent-stdout").apply { isDaemon = true; start() }
 
-        // stdin 喂 prompt（关闭 stdin 触发非交互执行）
+        // Feed the prompt via stdin (closing stdin triggers non-interactive execution)
         Thread({
             try {
                 proc.outputStream.bufferedWriter(Charsets.UTF_8).use { w ->
@@ -161,7 +161,7 @@ class CliAgentProcess(
             } catch (_: Exception) { }
         }, "cli-agent-stdin").apply { isDaemon = true; start() }
 
-        // 退出兜底：stdout EOF 后若尚未完成则收尾
+        // Exit fallback: finalize after stdout EOF if not already finished
         Thread({
             val exitCode = try {
                 proc.waitFor()
@@ -184,7 +184,7 @@ class CliAgentProcess(
         }, "cli-agent-wait").apply { isDaemon = true; start() }
     }
 
-    /** 停止：先温和 destroy，超时后强杀 */
+    /** Stop: gracefully destroy first, then force-kill after a timeout */
     fun stop() {
         val p = process ?: return
         p.destroy()
@@ -198,7 +198,7 @@ class CliAgentProcess(
     }
 
     // ═══════════════════════════════════════════════════════════
-    //  参数构造
+    //  Argument construction
     // ═══════════════════════════════════════════════════════════
 
     internal fun buildArgs(): List<String> {
@@ -239,7 +239,7 @@ class CliAgentProcess(
         }
     }
 
-    /** 权限参数：claude 用 --permission-mode / --dangerously-skip-permissions；codex 用 --sandbox-mode */
+    /** Permission arguments: claude uses --permission-mode / --dangerously-skip-permissions; codex uses --sandbox-mode */
     private fun permissionArgs(): Array<String> {
         return when (cliType) {
             "claude" -> when (permissionMode) {
@@ -260,7 +260,7 @@ class CliAgentProcess(
     }
 
     // ═══════════════════════════════════════════════════════════
-    //  事件解析
+    //  Event parsing
     // ═══════════════════════════════════════════════════════════
 
     private fun parseEvent(line: String) {
@@ -275,7 +275,7 @@ class CliAgentProcess(
         }
     }
 
-    /** claude stream-json：assistant 消息（content 数组含 text/thinking 块）→ 文本；result → 完成 */
+    /** claude stream-json: assistant message (content array with text/thinking blocks) → text; result → completion */
     private fun parseClaudeEvent(obj: JsonObject) {
         when (obj.get("type")?.asString) {
             "assistant" -> {
@@ -299,7 +299,7 @@ class CliAgentProcess(
         }
     }
 
-    /** codex exec --json：assistant message 事件 → 文本；complete → 完成 */
+    /** codex exec --json: assistant message event → text; complete → completion */
     private fun parseCodexEvent(obj: JsonObject) {
         when (obj.get("type")?.asString) {
             "message" -> {
@@ -308,7 +308,7 @@ class CliAgentProcess(
                 appendMessageContent(msg.get("content"))
             }
             "item" -> {
-                // 部分版本用 item.payload 包裹 assistant 消息
+                // Some versions wrap the assistant message in item.payload
                 val payload = obj.getAsJsonObject("payload") ?: return
                 if (payload.get("role")?.asString != "assistant") return
                 appendMessageContent(payload.get("content"))

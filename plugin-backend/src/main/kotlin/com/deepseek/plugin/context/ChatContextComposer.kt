@@ -32,7 +32,7 @@ object ChatContextComposer {
      * rather than a general documentation question.
      */
     fun isCodeQuery(query: String): Boolean {
-        if (Regex("""\b[A-Z][a-zA-Z0-9]{2,}\b""").containsMatchIn(query)) return true
+        if (Regex("""\b[A-Z][a-zA-Z0-9]*[a-z][a-zA-Z0-9]*[A-Z][a-zA-Z0-9]*\b""").containsMatchIn(query)) return true
         val codeKeywords = listOf(
             "class", "function", "method", "interface", "enum", "annotation",
             "import", "package", "extends", "implements", "override",
@@ -40,7 +40,7 @@ object ChatContextComposer {
             "dto", "vo", "po", "bo", "config", "handler", "util",
             "getter", "setter", "constructor", "bean", "component",
             "api", "rest", "endpoint", "route", "mapping",
-            "数据库", "表", "字段", "接口", "实现", "继承",
+            "database", "table", "field", "interface", "implementation", "inheritance",
             "get", "set", "find", "search", "query", "update", "save", "delete", "create"
         )
         val queryLower = query.lowercase()
@@ -55,7 +55,7 @@ object ChatContextComposer {
      */
     fun extractSearchKeywords(query: String): List<String> {
         val keywords = mutableSetOf<String>()
-        Regex("""\b[A-Z][a-zA-Z0-9]{2,}\b""").findAll(query).forEach { keywords.add(it.value) }
+        Regex("""\b[A-Z][a-zA-Z0-9]*[a-z][a-zA-Z0-9]*[A-Z][a-zA-Z0-9]*\b""").findAll(query).forEach { keywords.add(it.value) }
         Regex("""[""']([^""']{2,})[""']""").findAll(query).forEach { keywords.add(it.groupValues[1]) }
         Regex("""\b([a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)+)\b""").findAll(query).forEach {
             keywords.add(it.value.replace(".", ""))
@@ -95,7 +95,7 @@ object ChatContextComposer {
             seen.add(kw)
             val result = agenticSearch.grep(kw)
             if (result.matches.isEmpty()) continue
-            sb.appendLine("### 搜索: `$kw`（共 ${result.totalMatches} 条匹配）")
+            sb.appendLine("### Search: `$kw` (${result.totalMatches} matches total)")
             sb.appendLine()
             val byFile = result.matches.groupBy { it.filePath }
             for ((filePath, matches) in byFile.entries.take(5)) {
@@ -103,7 +103,7 @@ object ChatContextComposer {
                 for (matchItem in matches.take(5)) {
                     sb.appendLine("  L${matchItem.lineNumber}: ${matchItem.lineText.take(150)}")
                 }
-                if (matches.size > 5) sb.appendLine("  ... (还有 ${matches.size - 5} 条)")
+                if (matches.size > 5) sb.appendLine("  ... (${matches.size - 5} more)")
                 sb.appendLine()
             }
         }

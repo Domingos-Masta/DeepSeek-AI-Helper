@@ -12,8 +12,8 @@ import javax.swing.table.DefaultTableCellRenderer
 import javax.swing.table.DefaultTableModel
 
 /**
- * 模型目录弹窗 — 展示各品牌商支持的模型列表。
- * 独立弹窗，不阻塞用户填写其他设置。
+ * Model catalog dialog — shows the list of models supported by each provider.
+ * Standalone dialog that does not block the user from filling in other settings.
  */
 class ModelCatalogDialog : DialogWrapper(true) {
 
@@ -26,42 +26,42 @@ class ModelCatalogDialog : DialogWrapper(true) {
 
     private val models = listOf(
         // DeepSeek
-        ModelEntry("deepseek", "DeepSeek", "deepseek-v4-flash", "高速编码，支持 FIM 代码补全（默认）"),
-        ModelEntry("deepseek", "DeepSeek", "deepseek-v4-pro", "深度推理/规划，适合 Planner 角色"),
+        ModelEntry("deepseek", "DeepSeek", "deepseek-v4-flash", "Fast coding, supports FIM code completion (default)."),
+        ModelEntry("deepseek", "DeepSeek", "deepseek-v4-pro", "Deep reasoning/planning, suited to the Planner role."),
         // Agnes
-        ModelEntry("agnes", "Agnes 2.5 Flash", "agnes-2.5-flash", "轻量分析/审查，适合意图确认和 Reviewer"),
+        ModelEntry("agnes", "Agnes 2.5 Flash", "agnes-2.5-flash", "Lightweight analysis/review, suited to intent confirmation and Reviewer."),
         // NVIDIA
-        ModelEntry("nvidia", "NVIDIA NIM", "z-ai/glm-5.2", "GLM-5.2 中文理解强，适合需求分析"),
-        ModelEntry("nvidia", "NVIDIA NIM", "minimaxai/minimax-m3", "MiniMax M3 推理均衡，适合代码审查"),
-        ModelEntry("nvidia", "NVIDIA NIM", "stepfun-ai/step-3.7-flash", "阶跃星辰 Flash，速度快成本低"),
+        ModelEntry("nvidia", "NVIDIA NIM", "z-ai/glm-5.2", "GLM-5.2 has strong Chinese comprehension, suited to requirements analysis."),
+        ModelEntry("nvidia", "NVIDIA NIM", "minimaxai/minimax-m3", "MiniMax M3 balanced reasoning, suited to code review."),
+        ModelEntry("nvidia", "NVIDIA NIM", "stepfun-ai/step-3.7-flash", "StepFun Flash, fast with low cost."),
         // StepFun (image parsing)
-        ModelEntry("stepfun", "StepFun", "step-1o-turbo-vision", "多模态视觉解析（图片解析专用）"),
+        ModelEntry("stepfun", "StepFun", "step-1o-turbo-vision", "Multimodal vision parsing (dedicated to image parsing)."),
         // OpenRouter
-        ModelEntry("openrouter", "OpenRouter", "inclusionai/ling-3.0-flash:free", "Ling 3.0 Flash 免费版，适合日常对话与代码"),
-        // 智谱 AI
-        ModelEntry("zhipu", "BigModel", "glm-4", "GLM-4 通用模型，适合日常对话与代码"),
-        ModelEntry("zhipu", "BigModel", "glm-4-flash", "GLM-4-Flash 轻量快速版"),
-        ModelEntry("zhipu", "BigModel", "glm-4v", "GLM-4V 多模态视觉版"),
+        ModelEntry("openrouter", "OpenRouter", "inclusionai/ling-3.0-flash:free", "Ling 3.0 Flash free version, suited to everyday conversation and code."),
+        // Zhipu AI
+        ModelEntry("zhipu", "BigModel", "glm-4", "GLM-4 general model, suited to everyday conversation and code."),
+        ModelEntry("zhipu", "BigModel", "glm-4-flash", "GLM-4-Flash lightweight fast version."),
+        ModelEntry("zhipu", "BigModel", "glm-4v", "GLM-4V multimodal vision version."),
         // Claude (Anthropic)
-        ModelEntry("anthropic", "Claude (Anthropic)", "claude-sonnet-4-5", "Claude Sonnet 4.5 均衡性能，适合编码与对话"),
-        ModelEntry("anthropic", "Claude (Anthropic)", "claude-opus-4-5", "Claude Opus 4.5 最强推理，适合复杂任务"),
-        ModelEntry("anthropic", "Claude (Anthropic)", "claude-3-5-haiku-20241022", "Haiku 轻量快速，低成本"),
+        ModelEntry("anthropic", "Claude (Anthropic)", "claude-sonnet-4-5", "Claude Sonnet 4.5 balanced performance, suited to coding and conversation."),
+        ModelEntry("anthropic", "Claude (Anthropic)", "claude-opus-4-5", "Claude Opus 4.5 strongest reasoning, suited to complex tasks."),
+        ModelEntry("anthropic", "Claude (Anthropic)", "claude-3-5-haiku-20241022", "Haiku lightweight and fast, low cost."),
         // Codex (OpenAI)
-        ModelEntry("codex", "Codex (OpenAI)", "gpt-5.2-codex", "Codex 默认模型，适合编码与 Agent 任务"),
-        ModelEntry("codex", "Codex (OpenAI)", "gpt-5.1-codex", "Codex 迭代版本，推理更强"),
-        ModelEntry("codex", "Codex (OpenAI)", "gpt-5-codex", "Codex 标准版"),
-        ModelEntry("codex", "Codex (OpenAI)", "gpt-4o", "通用多模态模型"),
-        ModelEntry("openrouter", "OpenRouter", "poolside/laguna-xs-2.1:free", "Poolside Laguna XS 免费版，适合代码生成")
+        ModelEntry("codex", "Codex (OpenAI)", "gpt-5.2-codex", "Default Codex model, suited to coding and Agent tasks."),
+        ModelEntry("codex", "Codex (OpenAI)", "gpt-5.1-codex", "Iterative Codex version with stronger reasoning."),
+        ModelEntry("codex", "Codex (OpenAI)", "gpt-5-codex", "Codex standard edition."),
+        ModelEntry("codex", "Codex (OpenAI)", "gpt-4o", "General multimodal model."),
+        ModelEntry("openrouter", "OpenRouter", "poolside/laguna-xs-2.1:free", "Poolside Laguna XS free version, suited to code generation.")
     )
 
     init {
-        title = "Model Catalog / 模型目录"
-        isModal = false  // 非模态，不阻塞用户填写其他信息
+        title = "Model Catalog"
+        isModal = false  // non-modal, does not block the user from filling in other information
         init()
     }
 
     override fun createCenterPanel(): JComponent {
-        val columnNames = arrayOf("Provider / 供应商", "Model ID / 模型标识", "Notes / 说明")
+        val columnNames = arrayOf("Provider", "Model ID", "Notes")
         val data = models.map { arrayOf(it.providerDisplay, it.modelId, it.notes) }.toTypedArray()
 
         val tableModel = object : DefaultTableModel(data, columnNames) {
@@ -78,11 +78,11 @@ class ModelCatalogDialog : DialogWrapper(true) {
             getColumnModel().getColumn(2).preferredWidth = 180
             autoResizeMode = JTable.AUTO_RESIZE_ALL_COLUMNS
 
-            // 表头渲染
+            // Header rendering
             tableHeader.font = JBUI.Fonts.label().deriveFont(java.awt.Font.BOLD)
             tableHeader.background = JBColor(0xF0F0F0, 0x3C3C3C)
 
-            // 交替行颜色
+            // Alternating row colors
             val alternateColor = JBColor(0xF5F5F5, 0x2A2A2A)
             setDefaultRenderer(String::class.java, object : DefaultTableCellRenderer() {
                 override fun getTableCellRendererComponent(
@@ -114,6 +114,6 @@ class ModelCatalogDialog : DialogWrapper(true) {
     }
 
     override fun createActions(): Array<Action> {
-        return arrayOf(okAction.apply { putValue(Action.NAME, "Close / 关闭") })
+        return arrayOf(okAction.apply { putValue(Action.NAME, "Close") })
     }
 }

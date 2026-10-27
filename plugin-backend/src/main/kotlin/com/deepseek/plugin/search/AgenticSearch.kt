@@ -13,16 +13,16 @@ import com.intellij.psi.PsiManager
 import java.io.File
 
 /**
- * Agentic Search 引擎。
+ * Agentic Search engine.
  *
- * 提供 grep / glob / read 三个搜索工具，供 LLM 自主调用以检索代码信息。
+ * Provides three search tools — grep / glob / read — for the LLM to call autonomously to retrieve code information.
  *
- * grep 和 read 委托给 [FileAccessService]（统一文件访问层），与 MCP 工具
- * 和 Q&A 全文扫描共享同一套实现。若 FileAccessService 调用失败会自动降级。
+ * grep and read delegate to [FileAccessService] (the unified file access layer), sharing the same
+ * implementation as MCP tools and Q&A full-text scanning. Falls back automatically if FileAccessService calls fail.
  *
- * glob 保持独立实现（纯模式匹配，无需文件读取）。
+ * glob keeps an independent implementation (pure pattern matching, no file reading required).
  *
- * 用法：
+ * Usage:
  *   val engine = AgenticSearch(project)
  *   val result = engine.grep("getUserById", "*.java")
  *   val files = engine.glob("glob pattern")
@@ -33,37 +33,37 @@ class AgenticSearch(
     private val fileAccess: FileAccessService = ChainedFileAccess()
 ) {
 
-    // ── 最大行数限制（防止单文件过大撑爆上下文） ──
+    // ── Maximum line limit (prevents a single oversized file from overflowing the context) ──
     private val maxReadLines = 500
     private val maxReadChars = 30_000
 
-    // ── grep 最大匹配数（防止匹配过多无法处理） ──
+    // ── Maximum grep matches (prevents too many matches to handle) ──
     private val maxGrepMatches = 100
     private val maxGrepFiles = 30
 
-    // ── 忽略的目录 ──
+    // ── Ignored directories ──
     private val ignoredDirs = setOf(".git", ".gradle", "build", "target", "node_modules",
         "out", "dist", ".idea", ".mvn", ".settings", "bin", "obj", "__pycache__", "venv")
 
-    // ── 支持的代码文件扩展名 ──
+    // ── Supported code file extensions ──
     private val codeExtensions = setOf("java", "kt", "kts", "scala", "groovy",
         "py", "js", "ts", "jsx", "tsx", "vue", "go", "rs", "rb", "php",
         "swift", "c", "cpp", "h", "hpp", "cs", "dart", "sql", "gradle",
         "xml", "yaml", "yml", "json", "properties", "css", "scss", "less")
 
     // ════════════════════════════════════════════════════════════════
-    //  公开 API
+    //  Public API
     // ════════════════════════════════════════════════════════════════
 
     /**
-     * 内容搜索（类似 ripgrep）。
+     * Content search (similar to ripgrep).
      *
-     * 委托给 [FileAccessService.searchInProject]，失败时自动降级到
-     * VirtualFile 递归扫描。
+     * Delegates to [FileAccessService.searchInProject]; falls back automatically to
+     * recursive VirtualFile scanning.
      *
-     * @param query       搜索关键词或正则表达式
-     * @param filePattern 可选的文件名通配符过滤
-     * @return GrepResult 包含所有匹配行
+     * @param query       Search keyword or regular expression
+     * @param filePattern Optional file-name wildcard filter
+     * @return GrepResult containing all matching lines
      */
     fun grep(query: String, filePattern: String? = null): GrepResult {
         val basePath = project.basePath ?: return GrepResult(query, emptyList(), 0, false)
@@ -73,7 +73,7 @@ class AgenticSearch(
             Regex.escape(query).toRegex(RegexOption.IGNORE_CASE)
         }
 
-        // 先尝试通过 FileAccessService 搜索
+        // Try searching via FileAccessService first
         try {
             val searchResults = fileAccess.searchInProject(query, maxGrepMatches, project, basePath)
             if (searchResults.isNotEmpty()) {
@@ -102,7 +102,7 @@ class AgenticSearch(
             // FileAccessService failed, fall through to legacy
         }
 
-        // 降级：旧版 VirtualFile 递归扫描
+        // Fallback: legacy VirtualFile recursive scan
         return grepLegacy(query, filePattern, regex)
     }
 
@@ -138,10 +138,10 @@ class AgenticSearch(
     }
 
     /**
-     * 按文件名模式搜索文件。
+     * Searches for files by name pattern.
      *
-     * @param pattern 文件通配模式
-     * @return GlobResult 包含匹配的文件路径列表
+     * @param pattern File wildcard pattern
+     * @return GlobResult containing the list of matching file paths
      */
     fun glob(pattern: String): GlobResult {
         val matchedFiles = mutableListOf<String>()
@@ -160,19 +160,19 @@ class AgenticSearch(
     }
 
     /**
-     * 读取指定文件的内容。
+     * Reads the content of a specified file.
      *
-     * 委托给 [FileAccessService.readFile]，失败时降级到 File.readText().
+     * Delegates to [FileAccessService.readFile]; falls back to File.readText() on failure.
      *
-     * @param filePath  相对于项目根目录的文件路径
-     * @param startLine 可选，起始行号（1-based，包含）
-     * @param endLine   可选，结束行号（1-based，包含）
-     * @return ReadResult 包含文件内容
+     * @param filePath  File path relative to the project root
+     * @param startLine Optional start line number (1-based, inclusive)
+     * @param endLine   Optional end line number (1-based, inclusive)
+     * @return ReadResult containing the file content
      */
     fun read(filePath: String, startLine: Int? = null, endLine: Int? = null): ReadResult {
         val basePath = project.basePath ?: return ReadResult(filePath, "", 0, 0, 0)
 
-        // 先尝试通过 FileAccessService 读取
+        // Try reading via FileAccessService first
         try {
             val content = fileAccess.readFile(filePath, project)
             if (content != null) {
@@ -182,7 +182,7 @@ class AgenticSearch(
             // fall through
         }
 
-        // 降级：旧版直接文件读取
+        // Fallback: legacy direct file read
         return readLegacy(filePath, startLine, endLine)
     }
 
@@ -247,7 +247,7 @@ class AgenticSearch(
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  Directory 扫描（降级用）
+    //  Directory scan (for fallback)
     // ════════════════════════════════════════════════════════════════
 
     private fun grepInDir(
@@ -326,7 +326,7 @@ class AgenticSearch(
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  工具方法
+    //  Utility methods
     // ════════════════════════════════════════════════════════════════
 
     private fun isCodeFile(file: VirtualFile): Boolean {

@@ -3,42 +3,42 @@ package com.deepseek.plugin.i18n
 import com.intellij.util.messages.Topic
 
 /**
- * 界面语言切换监听器。
- * 通过 MessageBus 广播，各 UI 面板订阅后即时刷新文案，无需重新打开设置。
+ * Interface language change listener.
+ * Broadcast via MessageBus so each UI panel can refresh its copy immediately without reopening settings.
  */
 interface LanguageChangeListener {
     fun languageChanged()
 }
 
 /**
- * 内容字体大小切换监听器。
- * 聊天面板订阅后即时刷新已渲染消息的字体大小。
+ * Content font size change listener.
+ * The chat panel subscribes to refresh the font size of already-rendered messages immediately.
  */
 interface ContentFontChangeListener {
     fun fontChanged()
 }
 
 /**
- * 插件主题切换监听器。
- * 各插件面板订阅后即时刷新自身配色（不改变 IDE 全局主题）。
+ * Plugin theme change listener.
+ * Each plugin panel subscribes to refresh its own colors immediately (without changing the IDE global theme).
  */
 interface ThemeChangeListener {
     fun themeChanged()
 }
 
 /**
- * 全局界面刷新事件总线（IntelliJ MessageBus）。
+ * Global UI refresh event bus (IntelliJ MessageBus).
  */
 object I18nTopics {
-    /** 语言切换事件 */
+    /** Language change event */
     val LANGUAGE_CHANGED: Topic<LanguageChangeListener> =
         Topic("DeepSeekAI.LanguageChanged", LanguageChangeListener::class.java)
 
-    /** 内容字体大小切换事件 */
+    /** Content font size change event */
     val CONTENT_FONT_CHANGED: Topic<ContentFontChangeListener> =
         Topic("DeepSeekAI.ContentFontChanged", ContentFontChangeListener::class.java)
 
-    /** 插件独立主题切换事件 */
+    /** Plugin standalone theme change event */
     val THEME_CHANGED: Topic<ThemeChangeListener> =
         Topic("DeepSeekAI.ThemeChanged", ThemeChangeListener::class.java)
 }

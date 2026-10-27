@@ -27,14 +27,14 @@ import javax.swing.border.EmptyBorder
 import kotlin.math.ceil
 
 /**
- * 现代化聊天输入框。
+ * Modern chat input box.
  *
- * 设计要点：
- * - 等宽字体 + 纯白文字 + 纯黑背景，像素级清晰
- * - 自伸缩高度（4~12 行）
- * - @ 文件引用弹窗
- * - Enter 发送，Shift+Enter 换行
- * - 透明背景 — 由外层 ChatInputBar 的圆角容器负责绘制
+ * Design highlights:
+ * - Monospace font + pure white text + pure black background for pixel-level clarity
+ * - Self-resizing height (4~12 rows)
+ * - @ file reference popup
+ * - Enter to send, Shift+Enter for newline
+ * - Transparent background — drawn by the rounded container of the outer ChatInputBar
  */
 class AutoResizingTextArea(
     rows: Int,
@@ -48,7 +48,7 @@ class AutoResizingTextArea(
 
     private var minHeight: Int = 0
     private var maxHeight: Int = 0
-    private val placeholderText = "输入消息...  ·  Enter发送  ·  Shift+Enter换行"
+    private val placeholderText = "Type a message...  ·  Enter to send  ·  Shift+Enter for newline"
     private val refPattern = Regex("@[\\w.\\-/]+")
     private var suppressingPopup = false
 
@@ -69,7 +69,7 @@ class AutoResizingTextArea(
             override fun keyPressed(e: KeyEvent) {
                 if (e.keyCode == KeyEvent.VK_ENTER) {
                     if (e.isShiftDown) {
-                        // Shift+Enter: 显式插入换行，避免某些 LAF/平台下默认行为失效
+                        // Shift+Enter: explicitly insert a newline to avoid default behavior failing under some LAFs/platforms
                         e.consume()
                         val doc = document
                         val pos = caretPosition
@@ -209,7 +209,7 @@ class AutoResizingTextArea(
             if (clipboard.isDataFlavorAvailable(DataFlavor.imageFlavor)) {
                 val image = clipboard.getData(DataFlavor.imageFlavor) as? java.awt.Image
                 if (image != null) {
-                    // 保存到项目根目录的 images/ 文件夹
+                    // Save to the images/ folder in the project root
                     val projectDir = project.basePath ?: System.getProperty("java.io.tmpdir")
                     val imagesDir = File(projectDir, "images")
                     imagesDir.mkdirs()
@@ -280,14 +280,14 @@ class AutoResizingTextArea(
     }
 
     /**
-     * 滚动视口使当前插入符位置可见，方便用户始终看到正在输入的内容。
+     * Scrolls the viewport so the current caret position stays visible, letting the user always see what they are typing.
      */
     private fun scrollToCaret() {
         SwingUtilities.invokeLater {
             try {
                 val rect = modelToView2D(caretPosition)
                 if (rect != null) {
-                    // 向外扩展 20px 缓冲，让光标不紧贴边缘
+                    // Extend outward by a 20px buffer so the caret is not flush against the edge
                     scrollRectToVisible(java.awt.Rectangle(
                         rect.x.toInt(), rect.y.toInt(), rect.width.toInt(), rect.height.toInt() + 20
                     ))

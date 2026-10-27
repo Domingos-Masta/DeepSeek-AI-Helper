@@ -5,21 +5,21 @@ import com.intellij.psi.*
 import com.intellij.psi.util.PsiTreeUtil
 
 /**
- * 注解感知补全引擎。
+ * Annotation-aware completion engine.
  *
- * 分析用户代码中的注解（Lombok、Spring、JPA、Jakarta、自定义等），
- * 为补全系统提供：
- * - 由注解生成的合成成员（如 @Data → getters/setters）
- * - 注解驱动的代码模式建议（如 @RequestMapping → URL 映射骨架）
- * - 基于注解的候选排序/过滤（如 @Deprecated 降权、@Nullable 标注）
- * - @ 注解名补全（在类/方法/字段装饰位置推荐适用的注解）
+ * Analyzes annotations in the user's code (Lombok, Spring, JPA, Jakarta, custom, etc.)
+ * and provides the completion system with:
+ * - Synthetic members generated from annotations (e.g. @Data → getters/setters)
+ * - Annotation-driven code pattern suggestions (e.g. @RequestMapping → URL mapping skeleton)
+ * - Annotation-based candidate ranking/filtering (e.g. @Deprecated downranking, @Nullable marking)
+ * - @ annotation name completion (recommending applicable annotations at class/method/field decoration positions)
  */
 class AnnotationAwareCompletion {
 
     companion object {
         private val LOG = Logger.getInstance(AnnotationAwareCompletion::class.java)
 
-        // ============== 已知注解常量 ==============
+        // ============== Known annotation constants ==============
 
         // ---- Lombok ----
         const val LOMBOK_DATA        = "lombok.Data"
@@ -69,7 +69,7 @@ class AnnotationAwareCompletion {
         const val JPA_JOIN_COLUMN  = "jakarta.persistence.JoinColumn"
         const val JPA_TRANSACTIONAL = "jakarta.transaction.Transactional"
 
-        // ---- 旧 javax JPA ----
+        // ---- Legacy javax JPA ----
         const val JAVAX_ENTITY       = "javax.persistence.Entity"
         const val JAVAX_TABLE        = "javax.persistence.Table"
         const val JAVAX_COLUMN       = "javax.persistence.Column"
@@ -90,7 +90,7 @@ class AnnotationAwareCompletion {
         const val INT_NULLABLE  = "org.jetbrains.annotations.Nullable"
         const val INT_NOT_NULL  = "org.jetbrains.annotations.NotNull"
 
-        // ---- 注解适用目标 ----
+        // ---- Annotation application targets ----
         private val CLASS_TARGET   = setOf(Target.CLASS)
         private val METHOD_TARGET  = setOf(Target.METHOD)
         private val FIELD_TARGET   = setOf(Target.FIELD)
@@ -99,72 +99,72 @@ class AnnotationAwareCompletion {
         private val ALL_TARGET     = Target.values().toSet()
     }
 
-    // ==================== 类型定义 ====================
+    // ==================== Type definitions ====================
 
-    /** 注解适用目标 */
+    /** Annotation application target */
     enum class Target { CLASS, METHOD, FIELD, PARAMETER }
 
-    /** 合成成员种类 */
+    /** Synthetic member kind */
     enum class MemberKind {
         GETTER, SETTER, BUILDER_METHOD, STATIC_FACTORY, LOGGER,
         ALL_ARGS_CTOR, NO_ARGS_CTOR, REQ_ARGS_CTOR,
         EQUALS, HASH_CODE, TO_STRING, WITHER
     }
 
-    /** 上下文提示 */
+    /** Context hint */
     enum class ContextHint {
-        /** @Autowired 字段 → 提示注入点写法 */
+        /** @Autowired field → suggests an injection point */
         INJECTION_POINT,
-        /** @RequestMapping → 提示 URL 映射模式 */
+        /** @RequestMapping → suggests a URL mapping pattern */
         REQUEST_MAPPING,
-        /** @Transactional → 提示事务模式 */
+        /** @Transactional → suggests a transactional pattern */
         TRANSACTIONAL,
-        /** @Entity → 提示列映射 */
+        /** @Entity → suggests column mapping */
         ENTITY_MAPPING,
-        /** @Configuration → 提示 @Bean 方法 */
+        /** @Configuration → suggests a @Bean method */
         CONFIGURATION_METHOD,
-        /** @Service/@Component → 提示构造器注入 */
+        /** @Service/@Component → suggests constructor injection */
         CONSTRUCTOR_INJECTION,
-        /** @Scheduled → 提示 cron 表达式 */
+        /** @Scheduled → suggests a cron expression */
         SCHEDULED_TASK,
-        /** @Cacheable → 提示缓存用法 */
+        /** @Cacheable → suggests caching usage */
         CACHING,
-        /** @Async → 提示异步模式 */
+        /** @Async → suggests an async pattern */
         ASYNC_EXECUTION,
     }
 
-    /** 合成成员描述 */
+    /** Synthetic member description */
     data class SyntheticMember(
         val name: String,
         val returnType: String,
         val parameterTypes: List<String> = emptyList(),
         val kind: MemberKind,
         val description: String = "",
-        /** 是否 static */
+        /** Whether it is static */
         val isStatic: Boolean = false,
-        /** 泛型参数 */
+        /** Generic type parameters */
         val typeParams: List<String> = emptyList()
     )
 
-    /** 注解分析结果 */
+    /** Annotation analysis result */
     data class AnnotationContext(
-        /** 类级别的注解 FQN 集合 */
+        /** Set of class-level annotation FQNs */
         val classAnnotations: Set<String> = emptySet(),
-        /** 方法级别的注解 FQN 集合（当前方法） */
+        /** Set of method-level annotation FQNs (current method) */
         val methodAnnotations: Set<String> = emptySet(),
-        /** 字段级别的注解 FQN 集合（当前字段） */
+        /** Set of field-level annotation FQNs (current field) */
         val fieldAnnotations: Set<String> = emptySet(),
-        /** 参数级别的注解 FQN 集合（当前参数） */
+        /** Set of parameter-level annotation FQNs (current parameter) */
         val parameterAnnotations: Set<String> = emptySet(),
-        /** 上下文提示 */
+        /** Context hints */
         val hints: Set<ContextHint> = emptySet(),
-        /** 该注解上下文是否激活了合成成员 */
+        /** Whether this annotation context activates synthetic members */
         val hasSyntheticMembers: Boolean = false
     )
 
-    // ==================== 注解注册表 ====================
+    // ==================== Annotation registry ====================
 
-    /** 已知注解 → 语义行为 */
+    /** Known annotation → semantic behavior */
     private val knownAnnotations: Map<String, AnnotationBehavior> = mapOf(
         // ---- Lombok ----
         LOMBOK_DATA to AnnotationBehavior(
@@ -271,15 +271,15 @@ class AnnotationAwareCompletion {
 
     data class AnnotationBehavior(
         val category: String,            // "Lombok", "Spring", "JPA", "Jackson", "Validation"
-        val target: Set<Target>,         // 适用目标
-        val generatesMembers: Boolean,   // 是否生成合成成员
-        val hints: Set<ContextHint>      // 补全上下文提示
+        val target: Set<Target>,         // Application targets
+        val generatesMembers: Boolean,   // Whether synthetic members are generated
+        val hints: Set<ContextHint>      // Completion context hints
     )
 
-    // ==================== 对外 API ====================
+    // ==================== Public API ====================
 
     /**
-     * 分析 PSI 元素上的注解，返回注解上下文。
+     * Analyzes annotations on a PSI element and returns the annotation context.
      */
     fun analyzeAnnotations(element: PsiElement): AnnotationContext {
         val clsAnnotations = mutableSetOf<String>()
@@ -289,7 +289,7 @@ class AnnotationAwareCompletion {
         val hints = mutableSetOf<ContextHint>()
         var hasSynthetic = false
 
-        // 类注解
+        // Class annotations
         val psiClass = PsiTreeUtil.getParentOfType(element, PsiClass::class.java)
         if (psiClass != null) {
             for (anno in psiClass.annotations) {
@@ -303,7 +303,7 @@ class AnnotationAwareCompletion {
             }
         }
 
-        // 方法注解
+        // Method annotations
         val method = PsiTreeUtil.getParentOfType(element, PsiMethod::class.java)
         if (method != null) {
             for (anno in method.annotations) {
@@ -316,7 +316,7 @@ class AnnotationAwareCompletion {
             }
         }
 
-        // 字段注解
+        // Field annotations
         val field = PsiTreeUtil.getParentOfType(element, PsiField::class.java)
         if (field != null) {
             for (anno in field.annotations) {
@@ -329,7 +329,7 @@ class AnnotationAwareCompletion {
             }
         }
 
-        // 参数注解
+        // Parameter annotations
         val param = PsiTreeUtil.getParentOfType(element, PsiParameter::class.java)
         if (param != null) {
             for (anno in param.annotations) {
@@ -349,7 +349,7 @@ class AnnotationAwareCompletion {
     }
 
     /**
-     * 获取类注解生成的合成成员（如 Lombok @Data → getters/setters）。
+     * Gets the synthetic members generated by class annotations (e.g. Lombok @Data → getters/setters).
      */
     fun getSyntheticMembers(psiClass: PsiClass): List<SyntheticMember> {
         val members = mutableListOf<SyntheticMember>()
@@ -364,7 +364,7 @@ class AnnotationAwareCompletion {
         val hasAllArgs = LOMBOK_ALL_ARGS in annotations
         val hasSlf4j = LOMBOK_SLF4J in annotations
 
-        // 字段列表（不含 static 字段）
+        // Field list (excluding static fields)
         val instanceFields = psiClass.fields.filter { !it.hasModifierProperty(PsiModifier.STATIC) }
 
         if (hasGetter) {
@@ -455,8 +455,8 @@ class AnnotationAwareCompletion {
     }
 
     /**
-     * 根据注解上下文生成代码模式建议（骨架代码片段）。
-     * 返回 CompletionCandidate 列表，用于在合适位置展示。
+     * Generates code pattern suggestions (skeleton snippets) based on the annotation context.
+     * Returns a list of CompletionCandidate for display at appropriate positions.
      */
     fun getContextSuggestions(
         element: PsiElement,
@@ -469,7 +469,7 @@ class AnnotationAwareCompletion {
         for (hint in annotationContext.hints) {
             when (hint) {
                 ContextHint.REQUEST_MAPPING -> {
-                    // 在 @RestController 类中写方法时，提示 REST 方法骨架
+                    // Suggest a REST method skeleton when writing methods in a @RestController class
                     suggestions.add(
                         StaticAnalysisCompletionProvider.CompletionCandidate(
                             displayName = "GetMapping",
@@ -570,7 +570,7 @@ class AnnotationAwareCompletion {
                     )
                 }
 
-                else -> { /* 其他 hint 暂不处理 */ }
+                else -> { /* Other hints are not handled yet */ }
             }
         }
 
@@ -578,17 +578,17 @@ class AnnotationAwareCompletion {
     }
 
     /**
-     * 判断当前元素是否位于注解装饰位置（即将或正在写 @ 符号）。
+     * Checks whether the current element is at an annotation decoration position (about to write, or writing, the @ symbol).
      */
     fun isAnnotationContext(element: PsiElement, offset: Int): Boolean {
-        // 检测到 @ 符号或其附近
+        // Detect the @ symbol or its vicinity
         val text = element.text
         if (text == "@" || text.startsWith("@")) return true
 
         val parent = element.parent
         if (parent is PsiAnnotation) return true
 
-        // 检查前一个字符是否为 @
+        // Check whether the previous character is @
         val prev = element.prevSibling
         if (prev?.text == "@") return true
 
@@ -596,8 +596,8 @@ class AnnotationAwareCompletion {
     }
 
     /**
-     * 获取适用于当前目标（类/方法/字段）的常用注解名。
-     * 用于 @ 之后的补全推荐。
+     * Gets common annotation names applicable to the current target (class/method/field).
+     * Used to recommend completions after @.
      */
     fun getApplicableAnnotations(element: PsiElement): List<String> {
         val parent = PsiTreeUtil.getParentOfType(element, PsiModifierListOwner::class.java) ?: return emptyList()

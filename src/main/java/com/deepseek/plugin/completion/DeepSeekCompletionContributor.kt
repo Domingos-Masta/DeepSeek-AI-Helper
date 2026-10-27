@@ -17,12 +17,12 @@ import com.intellij.patterns.PlatformPatterns
 import com.intellij.util.ProcessingContext
 
 /**
- * 通用代码补全入口（所有语言）。
+ * Generic code completion entry point (all languages).
  *
- * 注册 [DeepSeekCompletionProvider] —— AI 驱动的 FIM 补全。
+ * Registers [DeepSeekCompletionProvider] — AI-driven FIM completion.
  *
- * Java 专属的静态分析前置过滤见 [JavaCompletionContributor]，
- * 仅在 IntelliJ IDEA 等包含 Java 插件的 IDE 中生效。
+ * Java-specific static analysis pre-filtering is in [JavaCompletionContributor],
+ * which only takes effect in IDEs that include the Java plugin, such as IntelliJ IDEA.
  */
 class DeepSeekCompletionContributor : CompletionContributor() {
 
@@ -31,7 +31,7 @@ class DeepSeekCompletionContributor : CompletionContributor() {
     }
 
     init {
-        // AI Provider —— 所有语言通用的 FIM 补全
+        // AI Provider — FIM completion common to all languages
         extend(
             CompletionType.BASIC,
             PlatformPatterns.psiElement(),
@@ -49,7 +49,7 @@ class DeepSeekCompletionProvider : CompletionProvider<CompletionParameters>() {
     private val client = DeepSeekApiClient()
     private val pipeline: CompletionPipeline = DefaultCompletionPipeline()
 
-    // 防止短时间内重复请求
+    // Prevent duplicate requests within a short period
     @Volatile private var lastRequestTime: Long = 0
 
     override fun addCompletions(
@@ -57,22 +57,22 @@ class DeepSeekCompletionProvider : CompletionProvider<CompletionParameters>() {
         context: ProcessingContext,
         result: CompletionResultSet
     ) {
-        // --- 0. PreChecker 预检查链 ---
+        // --- 0. PreChecker pre-check chain ---
         if (!pipeline.canProceed(parameters)) return
 
         val settings = DeepSeekSettings.instance
         if (parameters.isExtendedCompletion) return
 
-        // 收集前缀文本 (光标前)
+        // Collect the prefix text (before the caret)
         val prefix = getPrefixText(parameters)
         val prefixTrimmed = prefix.trimEnd()
 
-        // 最少字符数检测
+        // Minimum character count check
         val lastLine = prefixTrimmed.lines().lastOrNull() ?: ""
         if (lastLine.length < settings.completionMinPrefix) return
 
-        // --- 2.5 Python 预检层 (PyCharm 专用) ---
-        // 识别内置函数/关键字/魔术方法 → 跳过 AI 调用
+        // --- 2.5 Python pre-check layer (PyCharm-specific) ---
+        // Recognize built-in functions/keywords/magic methods → skip the AI call
         if (!PythonCompletionPreChecker.shouldUseAI(
                 element = parameters.position,
                 file = parameters.originalFile,
@@ -80,16 +80,16 @@ class DeepSeekCompletionProvider : CompletionProvider<CompletionParameters>() {
             )
         ) return
 
-        // --- 3. 去抖 (debounce) ---
+        // --- 3. Debounce ---
         val now = System.currentTimeMillis()
         val elapsed = now - lastRequestTime
         if (elapsed < settings.completionDelayMs && elapsed > 0) return
         lastRequestTime = now
 
-        // --- 3. 收集后缀文本 (光标后) ---
+        // --- 3. Collect the suffix text (after the caret) ---
         val suffix = getSuffixText(parameters)
 
-        // --- 4. 收集语言和文件上下文 ---
+        // --- 4. Collect language and file context ---
         val language = getLanguage(parameters)
         val fileContext = collectFileContext(parameters, settings.maxContextLines)
 
@@ -102,13 +102,13 @@ class DeepSeekCompletionProvider : CompletionProvider<CompletionParameters>() {
         val cursorLine = editor.document.getLineNumber(caretOffset)
         val cursorColumn = caretOffset - editor.document.getLineStartOffset(cursorLine)
 
-        // --- 4.5 FIM 能力检查：不支持 FIM 的 Provider（如 Anthropic）直接跳过，避免请求不存在的 /completions 端点 ---
+        // --- 4.5 FIM capability check: providers without FIM support (e.g. Anthropic) are skipped directly to avoid calling the nonexistent /completions endpoint ---
         if (!LlmProviderRegistry.get(settings.provider).supportsFim) {
             statusService.onIdle()
             return
         }
 
-        // --- 5. 缓存查询 (跳过重复 API 调用) ---
+        // --- 5. Cache lookup (skip duplicate API calls) ---
         if (settings.completionCacheEnabled) {
             val cached = pipeline.getCached(filePath, cursorLine, cursorColumn, lastLine)
             if (cached != null) {
@@ -119,13 +119,13 @@ class DeepSeekCompletionProvider : CompletionProvider<CompletionParameters>() {
                         result.addElement(
                             PrioritizedLookupElement.withPriority(
                                 LookupElementBuilder.create(cached)
-                                    .withTypeText("DeepSeek AI", true)
+                                    .withTypeText("DeepSeek-AI-Helper", true)
                                     .withIcon(com.intellij.icons.AllIcons.Actions.Find),
                                 Double.MAX_VALUE
                             )
                         )
 
-                        // Ghost Text 模式
+                        // Ghost Text mode
                         if (settings.completionGhostTextEnabled && !editor.isDisposed) {
                             GhostTextManager.showGhostText(editor, cached, caretOffset)
                         }
@@ -138,12 +138,12 @@ class DeepSeekCompletionProvider : CompletionProvider<CompletionParameters>() {
             LOG.debug("Cache MISS: will call API")
         }
 
-        // --- 6. 异步调用 FIM API ---
+        // --- 6. Call the FIM API asynchronously ---
         statusService.onGenerating()
 
-        // 流式/同步分支：Ghost Text 模式下优先流式展示
+        // Streaming/synchronous branch: prefer streaming display in Ghost Text mode
         if (settings.completionGhostTextEnabled && !editor.isDisposed) {
-            // === 流式 FIM 路径：首 token 即显示到 Ghost Text ===
+            // === Streaming FIM path: show the first token in Ghost Text immediately ===
             var accumulatedPrefix = ""
             client.completionFimStream(
                 prefix = prefix,
@@ -173,7 +173,7 @@ class DeepSeekCompletionProvider : CompletionProvider<CompletionParameters>() {
                             result.addElement(
                                 PrioritizedLookupElement.withPriority(
                                     LookupElementBuilder.create(suggestion)
-                                        .withTypeText("DeepSeek AI", true)
+                                        .withTypeText("DeepSeek-AI-Helper", true)
                                         .withIcon(com.intellij.icons.AllIcons.Actions.Find),
                                     Double.MAX_VALUE
                                 )
@@ -192,11 +192,11 @@ class DeepSeekCompletionProvider : CompletionProvider<CompletionParameters>() {
                         ApplicationManager.getApplication().invokeLater {
                             val project = parameters.editor.project ?: return@invokeLater
                             if (!project.isDisposed) {
-                                val errMsg = statusService.getErrorMessage().ifBlank { "请检查 API Key 或网络连接" }
+                                val errMsg = statusService.getErrorMessage().ifBlank { "Please check the API key or network connection" }
                                 ToolWindowManager.getInstance(project).notifyByBalloon(
-                                    "DeepSeek AI CodeHelper",
+                                    "DeepSeek-AI-Helper",
                                     MessageType.WARNING,
-                                    "AI 补全连续失败 (x" + statusService.getConsecutiveErrors() + ")：" + errMsg
+                                    "AI completion failed repeatedly (x" + statusService.getConsecutiveErrors() + "): " + errMsg
                                 )
                                 statusService.resetConsecutiveErrors()
                             }
@@ -206,7 +206,7 @@ class DeepSeekCompletionProvider : CompletionProvider<CompletionParameters>() {
                 }
             )
         } else {
-            // === 同步 FIM 路径（查找列表模式） ===
+            // === Synchronous FIM path (lookup list mode) ===
             client.completionFim(
                 prefix = prefix,
                 suffix = suffix,
@@ -219,11 +219,11 @@ class DeepSeekCompletionProvider : CompletionProvider<CompletionParameters>() {
                         ApplicationManager.getApplication().invokeLater {
                             val project = parameters.editor.project ?: return@invokeLater
                             if (!project.isDisposed) {
-                                val errMsg = statusService.getErrorMessage().ifBlank { "请检查 API Key 或网络连接" }
+                                val errMsg = statusService.getErrorMessage().ifBlank { "Please check the API key or network connection" }
                                 ToolWindowManager.getInstance(project).notifyByBalloon(
-                                    "DeepSeek AI CodeHelper",
+                                    "DeepSeek-AI-Helper",
                                     MessageType.WARNING,
-                                    "AI 补全连续失败 (x" + statusService.getConsecutiveErrors() + ")：" + errMsg
+                                    "AI completion failed repeatedly (x" + statusService.getConsecutiveErrors() + "): " + errMsg
                                 )
                                 statusService.resetConsecutiveErrors()
                             }
@@ -248,7 +248,7 @@ class DeepSeekCompletionProvider : CompletionProvider<CompletionParameters>() {
                         result.addElement(
                             PrioritizedLookupElement.withPriority(
                                 LookupElementBuilder.create(suggestion)
-                                    .withTypeText("DeepSeek AI", true)
+                                    .withTypeText("DeepSeek-AI-Helper", true)
                                     .withIcon(com.intellij.icons.AllIcons.Actions.Find),
                                 Double.MAX_VALUE
                             )
@@ -269,10 +269,10 @@ class DeepSeekCompletionProvider : CompletionProvider<CompletionParameters>() {
         }
     }
 
-    // ===================== 上下文收集 =====================
+    // ===================== Context collection =====================
 
     /**
-     * 获取光标前的代码文本 (最多取 maxContextLines 行).
+     * Gets the code text before the caret (up to maxContextLines lines).
      */
     private fun getPrefixText(parameters: CompletionParameters): String {
         val document = parameters.editor.document
@@ -281,14 +281,14 @@ class DeepSeekCompletionProvider : CompletionProvider<CompletionParameters>() {
         val cursorLine = document.getLineNumber(offset)
         val settings = DeepSeekSettings.instance
 
-        // 从光标往前取 N 行
+        // Take N lines before the caret
         val startLine = maxOf(0, cursorLine - settings.maxContextLines)
         val startOffset = document.getLineStartOffset(startLine)
         return document.getText(com.intellij.openapi.util.TextRange(startOffset, offset))
     }
 
     /**
-     * 获取光标后的代码文本 (最多取 20 行).
+     * Gets the code text after the caret (up to 20 lines).
      */
     private fun getSuffixText(parameters: CompletionParameters): String {
         val document = parameters.editor.document
@@ -304,7 +304,7 @@ class DeepSeekCompletionProvider : CompletionProvider<CompletionParameters>() {
     }
 
     /**
-     * 获取文件语言名.
+     * Gets the file language name.
      */
     private fun getLanguage(parameters: CompletionParameters): String {
         val fileType = parameters.originalFile.fileType
@@ -342,7 +342,7 @@ class DeepSeekCompletionProvider : CompletionProvider<CompletionParameters>() {
     }
 
     /**
-     * 收集文件级上下文: 包声明, imports, 外层类/函数签名.
+     * Collects file-level context: package declaration, imports, and outer class/function signatures.
      */
     private fun collectFileContext(parameters: CompletionParameters, maxLines: Int): String {
         val document = parameters.editor.document
@@ -351,7 +351,7 @@ class DeepSeekCompletionProvider : CompletionProvider<CompletionParameters>() {
 
         val sb = StringBuilder()
 
-        // 文件头 (package, imports) — 最多前 20 行
+        // File header (package, imports) — at most the first 20 lines
         val headerEnd = minOf(20, cursorLine)
         for (i in 0 until headerEnd) {
             val lineStart = document.getLineStartOffset(i)
@@ -362,7 +362,7 @@ class DeepSeekCompletionProvider : CompletionProvider<CompletionParameters>() {
             }
         }
 
-        // 如果光标离文件头很近,不重复
+        // If the caret is close to the file header, do not duplicate
         if (cursorLine > 20) {
             sb.appendLine("// ...")
         }

@@ -10,17 +10,17 @@ import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowManager
 
 /**
- * 将控制台选中的文本"上传"到聊天面板，以选中代码标签形式显示在输入框上方。
+ * "Uploads" the text selected in the console to the chat panel, displaying it above the input box as a selected-code tag.
  *
- * 用户可在 Run/Debug Console 中选中文本 → 右键 → DeepSeek AI → Upload to Chat，
- * 选中文本会以 "Console Output: 1-XX" 标签形式出现在聊天输入框上方，
- * 用户随后可在聊天面板中提问，AI 将结合该上下文作答。
+ * The user can select text in the Run/Debug Console → right-click → DeepSeek AI → Upload to Chat.
+ * The selected text appears above the chat input box as a "Console Output: 1-XX" tag,
+ * and the user can then ask questions in the chat panel; the AI will answer using that context.
  */
 class UploadConsoleAction : AnAction() {
 
     /**
-     * 使用 EDT 线程模型以确保 [CommonDataKeys.EDITOR] 等 UI 数据在控制台上下文中可访问。
-     * BGT 线程下获取控制台编辑器可能返回 null。
+     * Uses the EDT thread model to ensure UI data such as [CommonDataKeys.EDITOR] is accessible in the console context.
+     * Fetching the console editor on a BGT thread may return null.
      */
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
 
@@ -33,16 +33,16 @@ class UploadConsoleAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
 
-        // 获取选中文本 — EDT 线程下 CommonDataKeys.EDITOR 在控制台中也可用
+        // Get the selected text — on the EDT thread CommonDataKeys.EDITOR is also available in the console
         val editor = e.getData(CommonDataKeys.EDITOR)
         val selectedText = editor?.selectionModel?.selectedText ?: return
         if (selectedText.isBlank()) return
 
-        // 激活 DeepSeek AI 聊天面板（回调确保面板初始化完成后才推送内容）
+        // Activate the DeepSeek AI chat panel (the callback ensures content is pushed only after the panel is initialized)
         val toolWindow = ToolWindowManager.getInstance(project)
-            .getToolWindow("DeepSeek AI CodeHelper")
+            .getToolWindow("DeepSeek-AI-Helper")
         toolWindow?.activate {
-            // 优先使用 currentInstance，兜底从 toolWindow 内容查找
+            // Prefer currentInstance, falling back to searching the tool window content
             val panel = ChatPanel.currentInstance ?: findChatPanel(toolWindow)
             panel?.let {
                 it.setConsoleContext(selectedText)
@@ -52,9 +52,9 @@ class UploadConsoleAction : AnAction() {
     }
 
     /**
-     * 从 ToolWindow 的内容中查找 [ChatPanel] 实例。
-     * 当 [ChatPanel.currentInstance] 为 null 时兜底使用
-     *（如工具窗口关闭后重新激活时可能存在时序间隙）。
+     * Finds a [ChatPanel] instance in the ToolWindow's content.
+     * Used as a fallback when [ChatPanel.currentInstance] is null
+     * (e.g. there can be a timing gap when the tool window is closed and then reactivated).
      */
     private fun findChatPanel(toolWindow: ToolWindow): ChatPanel? {
         for (i in 0 until toolWindow.contentManager.contentCount) {

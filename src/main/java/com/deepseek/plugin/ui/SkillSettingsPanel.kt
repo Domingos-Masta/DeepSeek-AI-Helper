@@ -42,9 +42,9 @@ class SkillSettingsPanel(
 ) : JPanel(BorderLayout()) {
 
     companion object {
-        /** 單個技能文件最大大小：50 KB */
+        /** Maximum size of a single skill file: 50 KB. */
         private const val MAX_SKILL_FILE_SIZE = 50 * 1024L
-        /** 支援的技能文件擴展名 */
+        /** Supported skill file extensions. */
         private val ALLOWED_EXTENSIONS = setOf("md", "txt", "yaml", "yml", "json")
     }
 
@@ -190,7 +190,7 @@ class SkillSettingsPanel(
                     @Suppress("UNCHECKED_CAST")
                     val files = transferable.getTransferData(DataFlavor.javaFileListFlavor) as List<File>
                     for (file in files) {
-                        // 拖放路徑也檢查擴展名（與文件選擇器保持一致）
+                        // Check the extension for drag-and-drop paths too (consistent with the file chooser)
                         val ext = file.extension?.lowercase()
                         if (ext == null || ext !in ALLOWED_EXTENSIONS) {
                             Messages.showWarningDialog(
@@ -238,7 +238,7 @@ class SkillSettingsPanel(
     private fun importSkillFromFile(file: File) {
         if (!file.exists() || !file.isFile) return
 
-        // 檢查文件大小
+        // Check file size
         if (file.length() > MAX_SKILL_FILE_SIZE) {
             Messages.showWarningDialog(
                 I18n.tr("skill.file.too.large", file.name, file.length() / 1024),
@@ -279,12 +279,12 @@ class SkillSettingsPanel(
         skills.add(skill)
         saveAndRefresh()
 
-        // 上傳成功後提示輸入標籤
+        // Prompt for tags after a successful upload
         showTagEditor(skills.lastIndex)
     }
 
     /**
-     * 顯示標籤編輯對話框（上傳後自動彈出 / 點擊標籤手動編輯）。
+     * Shows the tag editor dialog (pops up automatically after upload / opened manually by clicking the tag).
      */
     private fun showTagEditor(skillIndex: Int) {
         if (skillIndex < 0 || skillIndex >= skills.size) return
@@ -365,15 +365,15 @@ class SkillSettingsPanel(
 
         // Preview of content (first line)
         val previewLine = skill.content.lines().firstOrNull()?.take(60) ?: ""
-        val previewLabel = JLabel(if (previewLine.isNotEmpty()) previewLine else "(空)").apply {
+        val previewLabel = JLabel(if (previewLine.isNotEmpty()) previewLine else "(empty)").apply {
             font = JBUI.Fonts.smallFont()
             foreground = JBColor(Color(0x888888), Color(0x777777))
         }
 
-        // Tags label (clickable) — 固定最大顯示寬度
+        // Tags label (clickable) — fixed maximum display width
         val tagText = if (skill.tags?.isNotEmpty() == true) {
             "🏷️ " + (skill.tags?.joinToString(", ") ?: "")
-        } else "🏷️ 點擊添加標籤"
+        } else "🏷️ Click to add tags"
         val displayText = if (tagText.length > 50) tagText.take(47) + "..." else tagText
         val tagsLabel = JLabel(displayText).apply {
             font = JBUI.Fonts.smallFont()
@@ -385,7 +385,7 @@ class SkillSettingsPanel(
                 }
             })
         }
-        // 用 FlowLayout 包裹標籤行，使其不受 GridBagLayout weightx 拉伸影響
+        // Wrap the tag row in a FlowLayout so it is not stretched by GridBagLayout weightx
         val tagsWrapper = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
             isOpaque = false
             add(tagsLabel)
@@ -510,29 +510,30 @@ class SkillSettingsPanel(
     /**
      * Get relevant enabled skills' content for injection into the system prompt.
      *
-     * @param userMessage 用戶當前問題。根據標籤/關鍵詞過濾只注入相關技能；
-     *                    空字符串時不注入任何技能（不佔用 token）。
-     * @return 格式化後的技能 Markdown，無相關技能時返回空字符串。
+     * @param userMessage The user's current question. Only relevant skills are injected,
+     *                    filtered by tags/keywords; an empty string injects no skills
+     *                    (and consumes no tokens).
+     * @return Formatted skill Markdown, or an empty string when no skills are relevant.
      */
     fun getEnabledSkillsContent(userMessage: String = ""): String {
         val enabled = skills.filter { it.enabled }
         if (enabled.isEmpty()) return ""
 
-        // userMessage 為空時不注入任何技能
+        // Do not inject any skills when userMessage is empty
         if (userMessage.isBlank()) return ""
 
-        // 按需過濾：只保留與用戶問題相關的技能
+        // Filter on demand: keep only the skills relevant to the user's question
         val relevant = filterRelevantSkills(enabled, userMessage)
         if (relevant.isEmpty()) return ""
 
         return buildString {
             appendLine()
-            appendLine("## 当前已加载的技能（Skill）")
-            appendLine("以下是你当前已加载的技能列表。当用户询问你有什么技能时，请如实列出这些技能的名称和用途。")
+            appendLine("## Currently loaded skills (Skill)")
+            appendLine("The following is your currently loaded skill list. When the user asks what skills you have, list the names and purposes of these skills truthfully.")
             appendLine()
             for (skill in relevant) {
                 val tagInfo = if (skill.tags?.isNotEmpty() == true) " [${skill.tags?.joinToString(", ") ?: ""}]" else ""
-                appendLine("### 技能名称：${skill.name}$tagInfo")
+                appendLine("### Skill name: ${skill.name}$tagInfo")
                 appendLine(skill.content)
                 appendLine()
             }
@@ -540,13 +541,13 @@ class SkillSettingsPanel(
     }
 
     /**
-     * 根據用戶問題過濾相關技能。
-     * 策略：標籤優先匹配 → 無匹配時退回到名稱/內容關鍵詞匹配。
+     * Filters skills by the user's question.
+     * Strategy: tag-first matching → fall back to name/content keyword matching when no tag matches.
      */
     private fun filterRelevantSkills(skills: List<SkillData>, userMessage: String): List<SkillData> {
         val queryLower = userMessage.lowercase()
 
-        // 策略 1：標籤匹配
+        // Strategy 1: tag matching
         val tagMatched = skills.filter { skill ->
             val tags = skill.tags ?: return@filter false
             tags.isNotEmpty() && tags.any { tag ->
@@ -555,9 +556,9 @@ class SkillSettingsPanel(
         }
         if (tagMatched.isNotEmpty()) return tagMatched
 
-        // 策略 2：回退到關鍵詞匹配（技能名 + 內容）
+        // Strategy 2: fall back to keyword matching (skill name + content)
         val keywords = extractKeywordsFromQuery(queryLower)
-        if (keywords.isEmpty()) return emptyList()  // 無關鍵詞時不注入
+        if (keywords.isEmpty()) return emptyList()  // no keywords, inject nothing
 
         return skills.filter { skill ->
             val searchSpace = skill.name.lowercase() + " " + skill.content.lowercase()
@@ -566,16 +567,16 @@ class SkillSettingsPanel(
     }
 
     /**
-     * 從用戶查詢中提取搜索關鍵詞。
+     * Extracts search keywords from the user query.
      */
     private fun extractKeywordsFromQuery(queryLower: String): List<String> {
         val keywords = mutableSetOf<String>()
 
-        // 提取 CamelCase 單詞（類名/函數名）
+        // Extract CamelCase words (class/function names)
         val camelPattern = Regex("""[a-z][a-zA-Z0-9]{2,}""")
         keywords.addAll(camelPattern.findAll(queryLower).map { it.value.lowercase() })
 
-        // 提取常見技術關鍵詞
+        // Extract common technical keywords
         val techKeywords = listOf(
             "java", "kotlin", "spring", "mybatis", "jpa", "hibernate",
             "redis", "kafka", "rabbitmq", "docker", "kubernetes",

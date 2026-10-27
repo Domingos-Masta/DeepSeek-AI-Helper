@@ -8,21 +8,21 @@ import com.intellij.openapi.util.Key
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Ghost Text 管理器。
+ * Ghost Text manager.
  *
- * 管理编辑器中的 Ghost Text Inlay 生命周期：
- * - 显示/隐藏 Ghost Text
- * - 接受 Ghost Text（将内容写入文档）
- * - 每个编辑器维护独立的 Ghost Text 状态
+ * Manages the lifecycle of Ghost Text inlays in the editor:
+ * - Show/hide Ghost Text
+ * - Accept Ghost Text (write its content into the document)
+ * - Each editor maintains its own independent Ghost Text state
  *
- * 线程安全：使用 ConcurrentHashMap 存储按编辑器索引的 GhostTextSession。
+ * Thread safety: uses a ConcurrentHashMap to store GhostTextSession keyed by editor.
  */
 object GhostTextManager {
 
     private val GHOST_KEY = Key.create<GhostTextSession>("DeepSeekGhostText")
     private val sessions = ConcurrentHashMap<Editor, GhostTextSession>()
 
-    /** Ghost Text 会话状态 */
+    /** Ghost Text session state */
     data class GhostTextSession(
         val text: String,
         val inlineInlay: Inlay<*>?,
@@ -31,26 +31,26 @@ object GhostTextManager {
     )
 
     /**
-     * 在编辑器中显示 Ghost Text。
+     * Shows Ghost Text in the editor.
      *
-     * @param editor 目标编辑器
-     * @param text 要显示的补全文本
-     * @param offset 插入位置（光标偏移）
+     * @param editor the target editor
+     * @param text the completion text to display
+     * @param offset the insertion position (caret offset)
      */
     fun showGhostText(editor: Editor, text: String, offset: Int) {
         if (text.isBlank()) return
 
-        // 清除已有的 Ghost Text
+        // Dismiss any existing Ghost Text
         dismissGhostText(editor)
 
         try {
             val lines = text.lines()
             val renderer = GhostTextRenderer(text)
 
-            // 第一行作为 inline inlay
+            // First line as an inline inlay
             val inlineInlay = editor.inlayModel.addInlineElement(offset, false, renderer)
 
-            // 后续行作为 block inlay
+            // Subsequent lines as a block inlay
             val blockInlay = if (lines.size > 1) {
                 val logicalPos = editor.offsetToLogicalPosition(offset)
                 val nextLinePos = LogicalPosition(logicalPos.line + 1, 0)
@@ -67,12 +67,12 @@ object GhostTextManager {
             sessions[editor] = session
             editor.putUserData(GHOST_KEY, session)
         } catch (_: Exception) {
-            // Inlay 创建失败时静默处理
+            // Silently ignore inlay creation failures
         }
     }
 
     /**
-     * 隐藏并清理 Ghost Text。
+     * Hides and cleans up Ghost Text.
      */
     fun dismissGhostText(editor: Editor) {
         val session = sessions.remove(editor) ?: return
@@ -83,14 +83,14 @@ object GhostTextManager {
             session.inlineInlay?.let { Disposer.dispose(it) }
             session.blockInlay?.let { Disposer.dispose(it) }
         } catch (_: Exception) {
-            // 如果 Inlay 已经被 dispose，静默处理
+            // Silently ignore if the inlay has already been disposed
         }
     }
 
     /**
-     * 接受 Ghost Text：将补全文本写入编辑器文档。
+     * Accepts Ghost Text: writes the completion text into the editor document.
      *
-     * @return 是否成功接受
+     * @return whether the acceptance succeeded
      */
     fun acceptGhostText(editor: Editor): Boolean {
         val session = sessions[editor] ?: return false
@@ -98,15 +98,15 @@ object GhostTextManager {
 
         val caretOffset = editor.caretModel.offset
 
-        // 使用 WriteCommandAction 写入文档
+        // Write into the document using WriteCommandAction
         com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction(editor.project) {
             try {
                 val document = editor.document
                 document.insertString(caretOffset, session.text)
-                // 移动光标到补全末尾
+                // Move the caret to the end of the completion
                 editor.caretModel.moveToOffset(caretOffset + session.text.length)
             } catch (_: Exception) {
-                // 写入失败时静默处理
+                // Silently ignore write failures
             }
         }
 
@@ -115,14 +115,14 @@ object GhostTextManager {
     }
 
     /**
-     * 检查当前编辑器是否有激活的 Ghost Text。
+     * Checks whether the current editor has active Ghost Text.
      */
     fun hasActiveGhostText(editor: Editor): Boolean {
         return sessions[editor]?.active == true
     }
 
     /**
-     * 获取当前激活的 Ghost Text 文本。
+     * Gets the text of the currently active Ghost Text.
      */
     fun getActiveText(editor: Editor): String? {
         return sessions[editor]?.takeIf { it.active }?.text

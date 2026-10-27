@@ -3,13 +3,13 @@ package com.deepseek.plugin.api
 import java.io.IOException
 
 /**
- * 插件统一异常基类。
+ * Unified base class for plugin exceptions.
  *
- * 所有插件内抛出的异常都应继承此类，确保统一处理路径。
+ * All exceptions thrown within the plugin should inherit from this class to ensure a unified handling path.
  *
- * @property severity 严重级别
- * @property userMessage 展示给用户的友好信息（中文）
- * @property techDetail 记录到日志的技术细节
+ * @property severity Severity level
+ * @property userMessage Friendly message shown to the user (Chinese)
+ * @property techDetail Technical details recorded to the log
  */
 open class DeepSeekPluginException(
     message: String,
@@ -28,10 +28,10 @@ open class DeepSeekPluginException(
     }
 }
 
-// ============== 具体异常类型 ==============
+// ============== Concrete exception types ==============
 
 /**
- * API 调用失败（网络错误、HTTP 错误状态码）。
+ * API call failed (network error, HTTP error status code).
  */
 class ApiException(
     message: String,
@@ -42,39 +42,39 @@ class ApiException(
 ) : DeepSeekPluginException(message, cause, severity, userMessage)
 
 /**
- * API 限流被触发（HTTP 429）。
+ * API rate limiting triggered (HTTP 429).
  */
 class RateLimitException(
-    message: String = "请求过于频繁，请稍后再试",
+    message: String = "Too many requests, please try again later",
     retryAfterMs: Long = 60_000L,
     severity: Severity = Severity.WARN,
-    userMessage: String = "请求过于频繁，请稍后再试"
+    userMessage: String = "Too many requests, please try again later"
 ) : DeepSeekPluginException(message, null, severity, userMessage) {
     val retryAfterMs: Long = retryAfterMs
 }
 
 /**
- * 会话持久化异常。
+ * Session persistence exception.
  */
 class SessionException(
     message: String,
     cause: Throwable? = null,
     severity: Severity = Severity.ERROR,
-    userMessage: String = "聊天记录保存失败，请检查磁盘空间"
+    userMessage: String = "Failed to save chat history, please check disk space"
 ) : DeepSeekPluginException(message, cause, severity, userMessage)
 
 /**
- * Agent 文件操作异常。
+ * Agent file operation exception.
  */
 class AgentException(
     message: String,
     cause: Throwable? = null,
     severity: Severity = Severity.ERROR,
-    userMessage: String = "Agent 文件操作执行失败"
+    userMessage: String = "Agent file operation failed"
 ) : DeepSeekPluginException(message, cause, severity, userMessage)
 
 /**
- * 配置错误（API Key 未设置等）。
+ * Configuration error (API Key not set, etc.).
  */
 class ConfigException(
     message: String,
@@ -82,17 +82,17 @@ class ConfigException(
     userMessage: String = message
 ) : DeepSeekPluginException(message, null, severity, userMessage)
 
-// ============== 扩展 / 工具方法 ==============
+// ============== Extension / utility methods ==============
 
-/** 将普通 Exception 包装为插件异常的便捷方法 */
+/** Convenience method to wrap a regular Exception as a plugin exception */
 fun Throwable.toPluginException(
-    userMessage: String = this.message ?: "操作失败",
+    userMessage: String = this.message ?: "Operation failed",
     severity: DeepSeekPluginException.Severity = DeepSeekPluginException.Severity.ERROR
 ): DeepSeekPluginException {
     return when (this) {
         is DeepSeekPluginException -> this
         is IOException -> ApiException(
-            message = this.message ?: "网络错误",
+            message = this.message ?: "Network error",
             cause = this,
             userMessage = userMessage
         )

@@ -1,7 +1,7 @@
 <idea-plugin>
-    <!-- Java 插件专属扩展点 — 仅在 com.intellij.java 存在时加载 -->
+    <!-- Java-plugin-specific extension points — loaded only when com.intellij.java is present -->
     <extensions defaultExtensionNs="com.intellij">
-        <!-- Java 代码补全（静态分析前置过滤 + 注解/注释感知） -->
+        <!-- Java code completion (static-analysis pre-filtering + annotation/comment awareness) -->
         <completion.contributor
             language="JAVA"
             implementationClass="com.deepseek.plugin.completion.JavaCompletionContributor"

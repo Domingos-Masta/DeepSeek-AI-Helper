@@ -68,59 +68,66 @@ class ChatToolWindowFactory : ToolWindowFactory {
          * HTML changelog content displayed in the update dialog.
          */
         private val CHANGELOG_HTML = """
+            <h3>v2.8.0</h3>
+            <ul>
+              <li>[New] Chat-bubble style icons for the tool window, actions, and assistant avatar</li>
+              <li>[Improved] Live step-by-step status (analyzing → reasoning → generating) while streaming instead of a static spinner</li>
+              <li>[Improved] Copilot-style chat UI polish</li>
+              <li>[Changed] Plugin renamed to DeepSeek-AI-Helper</li>
+            </ul>
             <h3>v2.7.6</h3>
             <ul>
-              <li>【修复】界面截断</li>
+              <li>[Fix] UI truncation</li>
             </ul>
             <h3>v2.7.5</h3>
             <ul>
-              <li>【新增】统一文档解析能力 — 支持 PDF、DOCX、XLSX、PPTX 与文本类附件，自动识别文件格式并提取结构化文本内容</li>
-              <li>【新增】扫描版 PDF 解析 — 无可提取文本的 PDF 页面会渲染为图片，交由具备视觉能力的模型继续理解</li>
-              <li>【新增】Claude Code / Codex CLI 原生附件支持 — 文档、图片及解析结果会按各 CLI 的原生参数和输入方式安全传递，充分利用 Claude 与 Codex 的文件和视觉能力</li>
-              <li>【修复】统一 Q&amp;A、Q&amp;A 全文扫描、Agent 与 Claude/Codex 模式的附件路由，避免已上传文档未进入模型上下文</li>
-              <li>【优化】新增附件大小与数量限制、格式校验、后台解析、任务取消和临时文件清理，并补充文档解析测试与附件改造验收矩阵</li>
-              <li>【优化】Claude/Codex Q&amp;A 上下文治理 — 普通问答不再隐式扫描项目，附件、源码与扫描结果仅用于当前请求；按 Provider 上下文窗口裁剪历史并保留最近完整对话</li>
-              <li>【增强】Claude/Codex 原生问答能力 — Claude 支持原生图片消息，Codex 支持原生图片与推理强度；全文扫描仅开放本地只读检索工具，并增强流式错误、取消、重试与部分回答保留</li>
-              <li>【修复】回答完成后底部 Token 统计可能显示不全 — 区分用户滚动与布局变化，稳定完成后的底部定位并清理流式占位间距；Token 用量随会话持久化，切换会话后仍可恢复</li>
+              <li>[New] Unified document parsing — supports PDF, DOCX, XLSX, PPTX and text attachments, automatically detecting the file format and extracting structured text content</li>
+              <li>[New] Scanned PDF parsing — PDF pages with no extractable text are rendered as images and passed to a vision-capable model for further understanding</li>
+              <li>[New] Native attachment support for Claude Code / Codex CLI — documents, images and parsing results are safely passed according to each CLI's native parameters and input methods, making full use of Claude and Codex file and vision capabilities</li>
+              <li>[Fix] Unified attachment routing for Q&amp;A, Q&amp;A full-text scan, Agent and Claude/Codex modes, preventing uploaded documents from being left out of the model context</li>
+              <li>[Improved] Added attachment size/count limits, format validation, background parsing, task cancellation and temp-file cleanup, plus document-parsing tests and an attachment rework acceptance matrix</li>
+              <li>[Improved] Claude/Codex Q&amp;A context governance — regular Q&amp;A no longer implicitly scans the project; attachments, source code and scan results are used only for the current request; history is trimmed by the Provider's context window while keeping the most recent complete conversation</li>
+              <li>[Enhanced] Native Q&amp;A capability for Claude/Codex — Claude supports native image messages; Codex supports native images and reasoning effort; full-text scan only exposes local read-only retrieval tools, with improved streaming errors, cancellation, retries and partial-answer retention</li>
+              <li>[Fix] Bottom Token stats could be incomplete after an answer finished — distinguish user scrolling from layout changes, stabilize bottom positioning after completion, and clean up the streaming placeholder spacing; Token usage is persisted with the conversation and restored after switching conversations</li>
             </ul>
             <h3>v2.7.4</h3>
             <ul>
-              <li>【新增】Codex 原生 Responses API 协议 — 新增 <code>codex-responses</code> 协议，Codex (OpenAI) 供应商现在直接调用 OpenAI Responses API（<code>POST /v1/responses</code>），兼容 cc-switch「供应商原生 Responses 直连」配置；system 消息自动转为 <code>instructions</code> 字段，流式 SSE 监听 <code>response.output_text.delta</code> 逐 token 回调；支持 gpt-5.2-codex、gpt-5.1-codex 等仅限 Responses API 的新型模型</li>
-              <li>【修复】claude、codex在Q&A问答模式不可用问题。现codex和claude在各自cli模式和Q&A问答模式都可用</li>
+              <li>[New] Native Codex Responses API protocol — added the <code>codex-responses</code> protocol; the Codex (OpenAI) provider now calls the OpenAI Responses API directly (<code>POST /v1/responses</code>), compatible with cc-switch "provider native Responses direct connection" configurations; system messages are automatically converted to the <code>instructions</code> field; streaming SSE listens for <code>response.output_text.delta</code> token-by-token callbacks; supports new Responses-API-only models such as gpt-5.2-codex and gpt-5.1-codex</li>
+              <li>[Fix] Fixed the issue where claude and codex were unavailable in Q&amp;A mode. Both codex and claude now work in their respective CLI modes and in Q&amp;A mode</li>
             </ul>
             <h3>v2.7.3</h3>
             <ul>
-              <li>【新增】第四种模式「Claude/Codex」— 驱动本地 Claude Code / Codex CLI 的原生 Agent 能力（问答、修改代码、执行命令、调用工具），凭据复用本地登录态；模式下拉框跟随 Provider 动态显示 Claude Code / Codex；支持权限策略（仅文件编辑 / 跳过全部权限 / 仅计划）；执行前后文件快照对比，变更自动记录到「变更管理」可回滚</li>
+              <li>[New] Fourth mode "Claude/Codex" — drives the native Agent capabilities of the local Claude Code / Codex CLI (Q&amp;A, code editing, command execution, tool calling), reusing the local login state for credentials; the mode dropdown dynamically shows Claude Code / Codex based on the Provider; supports permission policies (file edits only / skip all permissions / plan only); before/after file snapshots are compared and changes are automatically recorded to "Change Management" for rollback</li>
             </ul>
             <h3>v2.7.2</h3>
             <ul>
-              <li>【新增】Claude (Anthropic) Provider — 新增 Anthropic/Claude 支持，走 OpenAI 兼容端点，可在聊天、Agent、右键功能中直接使用 Claude 模型</li>
-              <li>【新增】自动读取本地 Claude 配置 — API Key 解析链：设置面板 → ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN 环境变量（AUTH_TOKEN 对应 Claude 订阅 OAuth 登录态）→ 显式授权读取 ~/.claude/settings.json</li>
-              <li>【新增】设置面板新增 Claude 配置组 — 模型下拉框（claude-sonnet-4-5 / claude-opus-4-5 等）、Base URL 配置（支持 ANTHROPIC_BASE_URL 环境变量）、实时显示当前 Key 来源</li>
-              <li>【安全】OAuth 凭据保护 — ~/.claude 的 OAuth token 仅发送给 Anthropic 官方端点，防止泄露给第三方 Base URL</li>
-              <li>【优化】代码补全保护 — 不支持 FIM 的 Provider（Anthropic 等）自动跳过补全请求，Alt+P 手动补全给出明确提示</li>
-              <li>【新增】Codex (OpenAI) Provider — 复用本地 Codex CLI 登录态（~/.codex/auth.json 的 OPENAI_API_KEY / CODEX_API_KEY），支持 OPENAI_API_KEY / CODEX_API_KEY / OPENAI_BASE_URL 环境变量，模型与代理 Base URL 自动读取 ~/.codex/config.toml（含 cc-switch 的 model_providers 配置）</li>
-              <li>【修复】Claude / Codex 403 错误 — 移除运行时自动读取本地凭据（OAuth token 无法用于 API 端点），避免未授权的凭据被发送导致 403</li>
-              <li>【修复】Claude 对接 cc-switch 中转 — 新增 Anthropic 原生 Messages API 协议（POST /v1/messages + x-api-key + anthropic-version），支持 ANTHROPIC_BASE_URL 指向的 Anthropic 兼容端点（如 https://api.deepseek.com/anthropic），并支持 ANTHROPIC_DEFAULT_SONNET/HAIKU/OPUS_MODEL 模型映射</li>
-              <li>【优化】Claude / Codex 独立配置页 — 设置中新增「Claude / Codex」页面：Claude 提供「使用本地 settings.json」按钮，Codex 提供「使用本地配置信息」按钮，显式授权读取 ~/.claude/settings.json、~/.codex/config.toml + auth.json 后写入设置</li>
+              <li>[New] Claude (Anthropic) Provider — added Anthropic/Claude support via an OpenAI-compatible endpoint, so Claude models can be used directly in chat, Agent and right-click features</li>
+              <li>[New] Automatically reads local Claude configuration — API Key resolution chain: settings panel → ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN environment variables (AUTH_TOKEN corresponds to the Claude subscription OAuth login state) → explicit authorization to read ~/.claude/settings.json</li>
+              <li>[New] Settings panel gains a Claude configuration group — model dropdown (claude-sonnet-4-5 / claude-opus-4-5 etc.), Base URL configuration (supports the ANTHROPIC_BASE_URL environment variable), and live display of the current Key source</li>
+              <li>[Security] OAuth credential protection — the OAuth token from ~/.claude is sent only to the official Anthropic endpoint, preventing leakage to third-party Base URLs</li>
+              <li>[Improved] Code-completion protection — Providers that do not support FIM (Anthropic etc.) automatically skip completion requests; Alt+P manual completion shows a clear hint</li>
+              <li>[New] Codex (OpenAI) Provider — reuses the local Codex CLI login state (OPENAI_API_KEY / CODEX_API_KEY in ~/.codex/auth.json), supports OPENAI_API_KEY / CODEX_API_KEY / OPENAI_BASE_URL environment variables, and automatically reads the model and proxy Base URL from ~/.codex/config.toml (including cc-switch's model_providers configuration)</li>
+              <li>[Fix] Claude / Codex 403 errors — removed runtime auto-reading of local credentials (OAuth tokens cannot be used against API endpoints), preventing unauthorized credentials from being sent and causing 403</li>
+              <li>[Fix] Claude cc-switch relay integration — added the native Anthropic Messages API protocol (POST /v1/messages + x-api-key + anthropic-version), supports Anthropic-compatible endpoints pointed to by ANTHROPIC_BASE_URL (e.g. https://api.deepseek.com/anthropic), and supports ANTHROPIC_DEFAULT_SONNET/HAIKU/OPUS_MODEL model mapping</li>
+              <li>[Improved] Separate Claude / Codex configuration pages — a "Claude / Codex" page was added to settings: Claude provides a "Use local settings.json" button and Codex a "Use local configuration" button, which explicitly authorize reading ~/.claude/settings.json and ~/.codex/config.toml + auth.json before writing them into the settings</li>
             </ul>
             <h3>v2.7.1</h3>
             <ul>
-              <li>【新增】智谱配置项</li>
+              <li>[New] Zhipu configuration item</li>
             </ul>
             <h3>v2.7.0</h3>
             <ul>
-              <li>切换Agnes国内可用</li>
-              <li>【新增】MCP Server — 在 IDE 内启动 MCP (Model Context Protocol) 服务，以 SSE/HTTP 端点暴露 IDEA 能力，外部 AI 客户端（Claude Desktop、Cursor 等）可连接调用文件读写、代码搜索、符号导航等 Tool</li>
-              <li>【新增】MCP 设置 — 主题设置中新增 "MCP Server" 选项卡，可配置启用/关闭、端口（默认 8080）、自动启动</li>
-              <li>【新增】内置 8 个 MCP Tool — read_file / write_file / list_directory / search_in_project / find_symbol / get_project_info / get_open_files / get_active_editor_content</li>
-              <li>【新增】Extension Point — 提供 mcpToolProvider EP，供其他插件注册自定义 MCP Tool</li>
+              <li>Switch Agnes to a mainland-China-accessible endpoint</li>
+              <li>[New] MCP Server — starts an MCP (Model Context Protocol) service inside the IDE, exposing IDEA capabilities via an SSE/HTTP endpoint; external AI clients (Claude Desktop, Cursor, etc.) can connect and call tools for file read/write, code search, symbol navigation and more</li>
+              <li>[New] MCP settings — an "MCP Server" tab was added to the theme settings, with options for enable/disable, port (default 8080) and auto-start</li>
+              <li>[New] 8 built-in MCP tools — read_file / write_file / list_directory / search_in_project / find_symbol / get_project_info / get_open_files / get_active_editor_content</li>
+              <li>[New] Extension Point — provides the mcpToolProvider EP for other plugins to register custom MCP tools</li>
             </ul>
             <h3>v2.6.2</h3>
             <ul>
-              <li>【新增】思考过程开关 — 设置菜单新增"显示思考过程"复选项，关闭后 Q&A/Q&A 全文扫描模式隐藏 AI 推理内容，AGENT 模式不受影响</li>
-              <li>【优化】停止保留内容 — 点击停止时已生成的流式内容自动保留并渲染为完整消息气泡（Markdown/代码块/表格），不再丢失</li>
-              <li>【修复】Agent 内容左对齐 — 修复 Agent 模式下代码块下方文本左侧空白过大的问题</li>
+              <li>[New] Reasoning-process toggle — a "Show reasoning process" checkbox was added to the settings menu; when off, Q&amp;A / Q&amp;A full-text scan modes hide the AI's reasoning content, while AGENT mode is unaffected</li>
+              <li>[Improved] Stop keeps content — when Stop is clicked, the streamed content already generated is automatically kept and rendered as a complete message bubble (Markdown / code blocks / tables), instead of being lost</li>
+              <li>[Fix] Agent content left alignment — fixed the excessive left margin below code blocks in Agent mode</li>
             </ul>
             <h3>v2.6.1</h3>
             <ul>
@@ -128,234 +135,234 @@ class ChatToolWindowFactory : ToolWindowFactory {
             </ul>
             <h3>v2.6.0</h3>
             <ul>
-              <li>【新增】深度思考过程显示 — AI 回复中的推理内容（reasoning_content）折叠展示，可展开/收起，字数统计，深色/浅色主题自适应</li>
-              <li>【新增】字体大小设置 — 主题设置新增「字体大小」下拉框(12px~16px)，控制聊天面板内容文字大小</li>
-              <li>【新增】语言设置合并 — 「界面语言」与「AI 输出语言」合并为一个「语言」设置</li>
-              <li>【新增】OpenRouter 默认模型更换 — 默认模型改为 inclusionai/ling-3.0-flash:free，模型输入框改为可编辑下拉框</li>
-              <li>【优化】代码补全 — Ghost Text 默认开启、状态栏恢复显示 AI 状态、连续失败气泡提示、Python 预检层减少无效 API 调用</li>
-              <li>【优化】代码补全 — 流式 FIM：SSE 逐 token 返回，首 token 即显示到 Ghost Text，降低感知延迟</li>
-              <li>【优化】代码补全 — 新增 Ctrl+Shift+, 快捷键切换补全启用/禁用</li>
+              <li>[New] Deep reasoning display — the reasoning content (reasoning_content) in AI replies is shown collapsibly, can be expanded/collapsed, has a character count, and adapts to dark/light themes</li>
+              <li>[New] Font size setting — the theme settings gained a "Font size" dropdown (12px~16px) that controls the chat panel content font size</li>
+              <li>[New] Merged language settings — "Interface language" and "AI output language" were merged into a single "Language" setting</li>
+              <li>[New] OpenRouter default model change — the default model changed to inclusionai/ling-3.0-flash:free, and the model input box became an editable dropdown</li>
+              <li>[Improved] Code completion — Ghost Text enabled by default, AI status restored in the status bar, bubble hints for consecutive failures, and a Python pre-check layer to reduce invalid API calls</li>
+              <li>[Improved] Code completion — streaming FIM: SSE returns token by token, showing the first token in Ghost Text immediately to reduce perceived latency</li>
+              <li>[Improved] Code completion — added the Ctrl+Shift+, shortcut to toggle completion on/off</li>
             </ul>
             <h3>v2.5.9</h3>
             <ul>
-              <li>agent模式意图解析优化</li>
+              <li>Agent mode intent-parsing optimization</li>
             </ul>
             <h3>v2.5.8</h3>
             <ul>
-              <li>UI优化</li>
+              <li>UI optimization</li>
             </ul>
             <h3>v2.5.7</h3>
             <ul>
-              <li>【新增】右键菜单「Set Language / 设置语言」— 一键跳转主题设置，独立控制右键输出语言（与聊天面板隔离）</li>
-              <li>【新增】右键输出语言独立设置 — 主题设置中新增「右键输出语言」下拉框，支持中文/English 切换</li>
-              <li>【优化】右键菜单文本动态中英文 — Set Language / Explain Code / Review Code / Upload to Chat 随语言设置实时变化</li>
-              <li>【优化】Explain/Review 流式输出 — 改为流式 SSE 逐 token 显示，去掉领域限制提示，首 token 即展示，响应速度提升 30-50%</li>
+              <li>[New] Right-click menu "Set Language / Set Language" — jumps to the theme settings in one click and independently controls the right-click output language (isolated from the chat panel)</li>
+              <li>[New] Independent right-click output-language setting — a "Right-click output language" dropdown was added to the theme settings, supporting Chinese/English toggle</li>
+              <li>[Improved] Right-click menu text is dynamically bilingual — Set Language / Explain Code / Review Code / Upload to Chat update in real time with the language setting</li>
+              <li>[Improved] Explain/Review streaming output — changed to streaming SSE token-by-token display, removed the domain-restriction prompt, and shows the first token immediately, improving response speed by 30-50%</li>
             </ul>
             <h3>v2.5.6</h3>
             <ul>
-              <li>优化图像处理</li>
+              <li>Optimized image processing</li>
             </ul>
             <h3>v2.5.5</h3>
             <ul>
-              <li>agent模式流水线优化</li>
-              <li>新增agent模式Token 统计</li>
+              <li>Agent-mode pipeline optimization</li>
+              <li>Added Agent-mode Token statistics</li>
             </ul>
             <h3>v2.5.4</h3>
             <ul>
-              <li>NVIDIA NIM 模型支持+OpenRouter 模型支持— 新增 NVIDIA API Provider（z-ai/glm-5.2、minimaxai/minimax-m3、stepfun-ai/step-3.7-flash）+OpenRouter API Provider，支持下拉框选择模型</li>
-              <li>Agent 规划/编码阶段使用当前 Provider 模型 — Phase 1（规划）+ Phase 2（编码）不再硬编码 DeepSeek，改为使用 Settings 中选中的 Provider + Model</li>
-              <li>Agent Pipeline 各 Phase 独立配置 — Settings 新增「Agent Pipeline (Agent 流水线配置)」区域，可分别为意图确认、规划、编码、审查四个阶段指定 Provider + Model</li>
-              <li>设置按钮 + 弹出菜单 — 状态栏左侧新增 ⚙ 齿轮设置按钮，弹出菜单包含：Q&A/Agent 模式切换 + 快捷进入 Agent Pipeline Phase 设置</li>
-              <li>修复 NVIDIA API 请求格式 — topP/frequencyPenalty/presencePenalty 参数改为 snake_case，兼容 OpenAI 协议规范</li>
-              <li>Q&A 意图分类 — 问答模式下先调用 Phase 0 模型识别用户意图，普通问题直接回答（不扫描项目），报错/选中代码时自动读取源文件上下文</li>
-              <li>模型目录弹窗 — Settings 中新增「View Models」按钮，点击弹窗展示各品牌商的可用模型列表</li>
+              <li>NVIDIA NIM model support + OpenRouter model support — added an NVIDIA API Provider (z-ai/glm-5.2, minimaxai/minimax-m3, stepfun-ai/step-3.7-flash) + OpenRouter API Provider, with a dropdown to select models</li>
+              <li>Agent planning/coding phases use the current Provider model — Phase 1 (planning) + Phase 2 (coding) no longer hard-code DeepSeek; instead they use the Provider + Model selected in Settings</li>
+              <li>Independent per-Phase Agent Pipeline configuration — Settings gained an "Agent Pipeline (Agent pipeline configuration)" section, allowing a Provider + Model to be specified for each of the four phases: intent confirmation, planning, coding and review</li>
+              <li>Settings button + popup menu — a ⚙ gear settings button was added to the left of the status bar; its popup menu includes Q&amp;A/Agent mode switching + a shortcut to the Agent Pipeline Phase settings</li>
+              <li>Fixed the NVIDIA API request format — topP/frequencyPenalty/presencePenalty parameters changed to snake_case, complying with the OpenAI protocol specification</li>
+              <li>Q&amp;A intent classification — in Q&amp;A mode the Phase 0 model is called first to recognize user intent; ordinary questions are answered directly (no project scan), and source file context is read automatically on errors or when code is selected</li>
+              <li>Model catalog dialog — a "View Models" button was added to Settings; clicking it opens a dialog showing the available model list for each vendor</li>
             </ul>
             <h3>v2.5.3</h3>
             <ul>
-              <li>图片解析设置升级 — 设置中「StepFun Image Parsing (图像解析)」改为一级标题「Image Parsing (图像解析)」，新增下拉框选择解析模型：Agnes Image 2.1 Flash / StepFun，默认 Agnes</li>
-              <li>密钥复用 — Agnes复用自已配置的 API Key，无需额外输入；StepFun 保留独立密钥输入</li>
-              <li>剪贴板粘贴图片 — 输入框支持 Ctrl+V 直接粘贴剪贴板图片，自动添加为附件</li>
-              <li>图片解析无需模态弹窗 — 图片直接展示在用户消息气泡中，AI 流式气泡显示「解析中...」状态，解析完成后自动喂给 AI 进行二次优化输出，全程无弹窗打断</li>
+              <li>Image-parsing settings upgrade — "StepFun Image Parsing (Image Parsing)" in Settings became a first-level "Image Parsing (Image Parsing)" title with a new dropdown to select the parsing model: Agnes Image 2.1 Flash / StepFun, defaulting to Agnes</li>
+              <li>Key reuse — Agnes reuses its own configured API Key with no extra input needed; StepFun keeps a separate key input</li>
+              <li>Clipboard image paste — the input box supports Ctrl+V to paste clipboard images directly, automatically adding them as attachments</li>
+              <li>Image parsing without modal dialogs — images are shown directly in the user message bubble, the AI streaming bubble shows a "Parsing..." status, and after parsing completes the result is automatically fed to the AI for a second-pass optimized output, with no popup interruption throughout</li>
             </ul>
             <h3>v2.5.2</h3>
             <ul>
-              <li>深度领域限制 — 为插件内所有大模型交互注入 CS-only 领域限制提示词，锁定模型为纯计算机科学领域专用 AI 助手</li>
-              <li>智能体自我介绍 — 非 CS 话题越界时，模型以完整但简洁的自我介绍替代冷冰冰的拒绝话术，引导用户回到技术话题</li>
-              <li>绝对越狱防御 — 对非 CS 话题执行主题白名单过滤，逐字输出固定自我解释，严禁添加任何额外内容</li>
-              <li>边缘裁决准则 — 涉及技术伦理或选型对比时，仅从时间复杂度、吞吐量等纯技术量化指标分析</li>
-              <li>输出格式规范 — 强制结构化 Markdown 分层回复、代码语法高亮标注语言类型、承认未知概念禁止幻觉</li>
-              <li>全覆盖注入 — 限制生效于全部 6 条 LLM 路径：Q&A / Agent 多阶段 / 右键菜单 Agent / 代码补全 / Agentic Search / 翻译</li>
+              <li>Deep domain restriction — injects a CS-only domain-restriction prompt into all LLM interactions in the plugin, locking the model into a pure computer-science domain assistant</li>
+              <li>Agent self-introduction — when a non-CS topic is out of scope, the model replaces a cold refusal with a complete but concise self-introduction, guiding the user back to technical topics</li>
+              <li>Absolute jailbreak defense — for non-CS topics, applies topic whitelist filtering and outputs a fixed self-explanation verbatim, strictly forbidding any additional content</li>
+              <li>Edge-case adjudication rules — for technical ethics or option comparisons, analyze only pure technical quantitative metrics such as time complexity and throughput</li>
+              <li>Output format specification — enforces structured layered Markdown replies, language-type highlighting for code syntax, and acknowledging unknown concepts to forbid hallucination</li>
+              <li>Full coverage injection — the restriction applies to all 6 LLM paths: Q&amp;A / multi-phase Agent / right-click Agent / code completion / Agentic Search / translation</li>
             </ul>
             <h3>v2.5.1</h3>
             <ul>
-              <li>变更管理面板— Agent 模式修改文件后，不再在源目录生成 .bak 文件，改为统一记录在「变更管理」面板中</li>
-              <li>工具栏新增「变更管理」按钮（使用原生图标），点击进入变更管理页面</li>
-              <li>每次 Agent 操作自动创建变更记录，标题格式：「对xx需求的变更」+ 时间戳</li>
-              <li>记录可展开查看具体修改的文件列表</li>
-              <li>↩ 每个文件提供「回滚」按钮，一键还原原始内容</li>
-              <li>👁 每个文件提供「查看变更」按钮，打开 IntelliJ Diff 窗口对比差异</li>
+              <li>Change-management panel — after Agent mode modifies files, .bak files are no longer generated in the source directory; changes are now uniformly recorded in the "Change Management" panel</li>
+              <li>A "Change Management" button (using a native icon) was added to the toolbar to open the change-management page</li>
+              <li>Every Agent operation automatically creates a change record with a title format of "Changes for requirement xx" + timestamp</li>
+              <li>Records can be expanded to view the specific list of modified files</li>
+              <li>↩ Each file provides a "Rollback" button to restore the original content in one click</li>
+              <li>👁 Each file provides a "View Changes" button that opens the IntelliJ Diff window to compare differences</li>
             </ul>
             <h3>v2.5.0</h3>
             <ul>
-              <li>引入多智能体分工协作 — Agent 模式拆分为三个专用 Agent 流水线作业</li>
-              <li>规划 Agent（DeepSeek-V4-Pro）— 分析需求，制定代码修改计划</li>
-              <li>编码 Agent（DeepSeek-V4-Flash）— 根据计划生成具体的代码修改</li>
-              <li>审查 Agent（Agnes-2.0-Flash）— 审查代码质量、安全性和正确性</li>
-              <li>Q&A 模式保持单智能体，不受影响</li>
-              <li>API 客户端扩展 — 新增 chatStreamWithExplicitConfig 和 chatSyncWithExplicitConfig 方法，支持按 Agent 指定不同模型/Provider</li>
-              <li>Agent 模式文件操作备份机制保持不变，修改前自动创建 .bak 备份</li>
+              <li>Introduced multi-agent division of labor — Agent mode was split into three dedicated Agent pipeline jobs</li>
+              <li>Planning Agent (DeepSeek-V4-Pro) — analyzes requirements and produces a code-change plan</li>
+              <li>Coding Agent (DeepSeek-V4-Flash) — generates concrete code changes according to the plan</li>
+              <li>Review Agent (Agnes-2.0-Flash) — reviews code quality, security and correctness</li>
+              <li>Q&amp;A mode remains single-agent and unaffected</li>
+              <li>API client extension — added chatStreamWithExplicitConfig and chatSyncWithExplicitConfig methods to support specifying different models/Providers per Agent</li>
+              <li>Agent-mode file-operation backup mechanism remains unchanged, automatically creating a .bak backup before modifying</li>
             </ul>
             <h3>v2.4.4</h3>
             <ul>
-              <li>增加技能设置功能 — 会话栏新增齿轮图标设置按钮，点击进入全区域技能管理面板</li>
-              <li>支持上传技能文件（.md/.txt/.yaml）— 按钮上传和拖拽上传两种方式</li>
-              <li>技能列表管理 — 启用/停用切换、内容预览、删除技能</li>
-              <li>技能注入系统提示 — 已启用的技能内容自动追加到 Agent 模式的 system prompt 中，约束和规范 AI 行为</li>
-              <li>社区 Skill 库链接 — 设置面板内提供指向社区 Skill 库的快捷跳转</li>
+              <li>Added skill-settings feature — a gear settings button was added to the conversation bar to open the full-area skill-management panel</li>
+              <li>Supports uploading skill files (.md/.txt/.yaml) — both button upload and drag-and-drop upload</li>
+              <li>Skill list management — enable/disable toggles, content preview and skill deletion</li>
+              <li>Skill injection into the system prompt — enabled skill content is automatically appended to the Agent-mode system prompt to constrain and standardize AI behavior</li>
+              <li>Community Skill library link — the settings panel provides a shortcut to the community Skill library</li>
             </ul>
             <h3>v2.4.3</h3>
             <ul>
-              <li>引入 Agentic Search（Agentic 代码搜索）— 替代 RAG 进行代码检索：模型可像人类程序员一样自主调用 grep/glob/read 工具「搜索→阅读→判断→再搜索」，代码精确匹配远超 BM25 语义检索</li>
-              <li>RAG 回归文本/文档检索 — RagIndexer 仅索引 .md/.txt/.rst 等文档文件，代码搜索使用 AgenticSearch（grep/glob/read）实现零延迟、高精度匹配</li>
-              <li>新增 Agentic Search 配置 — 可在设置中启用/禁用，配置搜索轮次（1=单轮快速模式，>1=多轮深度搜索模式）</li>
-              <li>增加查询自动分类 — 系统自动判断用户问题是代码相关还是文档相关，选择最优检索策略</li>
+              <li>Introduced Agentic Search (Agentic code search) — replaces RAG for code retrieval: the model can autonomously call grep/glob/read tools like a human programmer "search → read → judge → search again", with code matching far exceeding BM25 semantic retrieval</li>
+              <li>RAG returns to text/document retrieval — RagIndexer only indexes document files such as .md/.txt/.rst; code search uses AgenticSearch (grep/glob/read) for zero-latency, high-precision matching</li>
+              <li>Added Agentic Search configuration — can be enabled/disabled in settings, with a configurable number of search rounds (1 = single-round fast mode, >1 = multi-round deep search mode)</li>
+              <li>Added automatic query classification — the system automatically determines whether the user's question is code-related or document-related and chooses the optimal retrieval strategy</li>
             </ul>
             <h3>v2.4.2</h3>
             <ul>
-              <li>引入 RAG（BM25 + 按行分块）— 用于文本/文档检索</li>
+              <li>Introduced RAG (BM25 + per-line chunking) — used for text/document retrieval</li>
             </ul>
             <h3>v2.4.1</h3>
             <ul>
-              <li>流式回复消息框随内容自动撑开 — 移除 JBScrollPane 固定高度，streamTextArea 直接放入 BorderLayout，每次 token 追加后 revalidate() 触发布局重算，气泡随 AI 逐字输出逐渐拉长，不再等待完整生成后跳变</li>
-              <li>每个消息气泡独立自绘圆角背景 — 扁平化架构，移除 card/outer/wrapper/padded 四层嵌套，MessageBubble 改为 GridBagLayout 自绘，一个气泡尺寸变化不影响其他气泡布局</li>
-              <li>代码块排版紧凑化 — 字体 13→12、内边距 14x18→8x14、HTML 行高设为 1.35，代码显示更紧凑</li>
+              <li>The streaming reply message box auto-grows with content — removed the fixed JBScrollPane height; streamTextArea is placed directly in a BorderLayout, and revalidate() is called after each token append to trigger layout recalculation, so the bubble grows gradually with the AI's character-by-character output instead of jumping after full generation</li>
+              <li>Each message bubble independently draws its own rounded background — a flattened architecture removed the four nested layers card/outer/wrapper/padded; MessageBubble now uses GridBagLayout to draw itself, so resizing one bubble does not affect other bubbles' layout</li>
+              <li>Compact code-block layout — font 13→12, padding 14x18→8x14, HTML line height 1.35, so code displays more compactly</li>
             </ul>
             <h3>v2.4.0</h3>
             <ul>
-              <li>支持 PyCharm / DataGrip 等非 Java IDE — Java 依赖改为可选，无 Java 插件的 IDE 中聊天/Agent/AI 补全正常使用，Java 专属功能（静态分析、注解/注释感知补全）优雅降级</li>
-              <li>按钮悬浮提示修复 — 用量查看、会话历史、新建会话等 9 个按钮的 tooltip 现在正常显示</li>
+              <li>Supports non-Java IDEs such as PyCharm / DataGrip — the Java dependency became optional; chat/Agent/AI completion work normally in IDEs without the Java plugin, and Java-specific features (static analysis, annotation/comment-aware completion) degrade gracefully</li>
+              <li>Button tooltip fix — tooltips for 9 buttons (usage view, conversation history, new conversation, etc.) now display correctly</li>
             </ul>
             <h3>v2.3.5</h3>
             <ul>
-              <li>修复换行失效、输入框截断</li>
+              <li>Fixed newline failures and input-box truncation</li>
             </ul>
             <h3>v2.3.4</h3>
             <ul>
-              <li>新增代码变更预览 — Generate/Optimize 生成代码后弹出 side-by-side 对比页面，用户审查后再确认是否保存</li>
-              <li>新增翻译对话框 — 聊天输入栏上传按钮旁添加翻译入口，弹出横向双栏翻译界面，支持 10 种语言互译</li>
+              <li>Added code-change preview — after Generate/Optimize produces code, a side-by-side comparison page pops up for the user to review before confirming whether to save</li>
+              <li>Added translation dialog — a translation entry was added next to the upload button in the chat input bar, opening a horizontal two-column translation UI supporting 10 languages</li>
             </ul>
             <h3>v2.3.3</h3>
             <ul>
-              <li>深色扁平化 UI 重构 — 所有消息卡片改用大圆角绘制 (arc=18)，暗色背景统一 #24242A</li>
-              <li>统一紫色圆形头像 — 用户 (toolwindow.svg) 与 AI (action.svg) 均为 26×26 紫色圆形，视觉一致</li>
-              <li>用户头像右侧添加 "me" 名称标签，与 AI "DP Helper" 对称</li>
-              <li>卡片内边距均衡 — 统一 EmptyBorder(12,16,16,16)，消除顶部多余空白</li>
-              <li>删除按钮复用系统图标 — 替换 emoji 为 AllIcons.Actions.Close，与清空按钮一致</li>
-              <li>代码面板完整渲染 — 移除 JBScrollPane，全部代码行无截断无滚动，内边距增至 14×18</li>
-              <li>新增可视化表格组件 — MessageTable 一体化 GridBagLayout 网格，支持 ✓/✕ 彩色标识、自动换行</li>
-              <li>Markdown 管道表格自动识别 — parseResponse() 自动检测 |...| 表格语法，渲染为 MessageTable</li>
+              <li>Dark flat UI rework — all message cards use large rounded corners (arc=18) and a unified dark background of #24242A</li>
+              <li>Unified purple circular avatars — both user (toolwindow.svg) and AI (action.svg) are 26×26 purple circles for visual consistency</li>
+              <li>A "me" name label was added to the right of the user avatar, symmetric with the AI "DP Helper"</li>
+              <li>Balanced card padding — unified EmptyBorder(12,16,16,16) to remove excess top whitespace</li>
+              <li>Delete button reuses the system icon — emoji replaced with AllIcons.Actions.Close, consistent with the clear button</li>
+              <li>Full code panel rendering — removed JBScrollPane; all code lines render without truncation or scrolling, with padding increased to 14×18</li>
+              <li>Added a visual table component — MessageTable is a unified GridBagLayout grid supporting ✓/✕ colored markers and automatic wrapping</li>
+              <li>Automatic Markdown pipe-table detection — parseResponse() automatically detects |...| table syntax and renders it as MessageTable</li>
             </ul>
             <h3>v2.3.2</h3>
             <ul>
-              <li>新增功能：Upload to Chat（控制台选中内容上传到聊天面板）</li>
+              <li>New feature: Upload to Chat (uploads console-selected content to the chat panel)</li>
             </ul>            
             <h3>v2.3.1</h3>
             <ul>
-              <li>架构优化</li>
+              <li>Architecture optimization</li>
             </ul>
             <h3>v2.3.0</h3>
             <ul>
-              <li>注解感知补全 — 自动分析 @Data/@Service/@RestController/@Entity 等注解，推荐合成方法（Lombok getter/setter/builder）和代码模式（Spring REST 骨架、JPA 映射、构造器注入）</li>
-              <li>注释感知补全 — 在注释中写自然语言即可生成代码，支持中文：<code>// 根据id删除订单</code> → deleteById、<code>// 查询所有</code> → findAll、<code>// 获取name字段</code> → getName 等 30+ 种模式</li>
-              <li>@注解名自动补全 — 在类/方法/字段/参数位置输入 @ 时，自动推荐当前上下文适用的注解列表</li>
-              <li>新增独立设置开关 — 可分别开启/关闭"注解感知补全"和"注释感知补全"</li>
-              <li>静态分析前置过滤 — 基于 IntelliJ PSI/AST 的静态补全作为 AI 补全的前置过滤层，减少不必要的 API 调用</li>
+              <li>Annotation-aware completion — automatically analyzes annotations such as @Data/@Service/@RestController/@Entity and recommends synthetic methods (Lombok getter/setter/builder) and code patterns (Spring REST skeleton, JPA mapping, constructor injection)</li>
+              <li>Comment-aware completion — write natural language in comments to generate code, supporting Chinese: <code>// delete order by id</code> → deleteById, <code>// query all</code> → findAll, <code>// get name field</code> → getName and 30+ other patterns</li>
+              <li>@Annotation-name auto-completion — when typing @ at a class/method/field/parameter position, automatically recommends the annotation list applicable to the current context</li>
+              <li>Added independent settings toggles — "annotation-aware completion" and "comment-aware completion" can be enabled/disabled separately</li>
+              <li>Static-analysis pre-filtering — IntelliJ PSI/AST-based static completion acts as a pre-filter layer for AI completion, reducing unnecessary API calls</li>
             </ul>
             <h3>v2.2.5</h3>
             <ul>
-              <li>发送和换行改为 Enter / Shift+Enter</li>
+              <li>Send and newline changed to Enter / Shift+Enter</li>
             </ul>
             <h3>v2.2.4</h3>
             <ul>
-              <li>消息面板响应式布局 — 消息气泡自适应宽度，窗口缩放时动态重排，消除气泡上下多余空白</li>
-              <li>连续分栏布局 — 拖拽消息与输入区域之间的分隔条实时更新内容</li>
-              <li>输入区域拖拽手柄现在直接调整分隔条位置，操作更可控</li>
-              <li>代码块最大高度从 300px 提升至 1500px，适配长代码片段</li>
-              <li>收紧消息气泡内边距，减少用户/助手消息周围的垂直空白</li>
+              <li>Responsive message-panel layout — message bubbles auto-fit their width and dynamically reflow when the window resizes, eliminating excess vertical whitespace around bubbles</li>
+              <li>Continuous split-pane layout — dragging the divider between messages and the input area updates content in real time</li>
+              <li>The input-area drag handle now directly adjusts the divider position, making the operation more controllable</li>
+              <li>Maximum code-block height increased from 300px to 1500px to fit long code snippets</li>
+              <li>Tightened message-bubble padding to reduce vertical whitespace around user/assistant messages</li>
             </ul>
             <h3>v2.2.3</h3>
             <ul>
-              <li>修复：按钮点击事件</li>
+              <li>Fix: button click events</li>
             </ul>
             <h3>v2.2.2</h3>
             <ul>
-              <li>修复：JTextComponent.modelToView(int) -> modelToView2D(int)</li>
+              <li>Fix: JTextComponent.modelToView(int) -> modelToView2D(int)</li>
             </ul>
             <h3>v2.2.1</h3>
             <ul>
-              <li>VSCode 工业暗色主题输入面板 — 4 层垂直布局：通知栏、工具栏、可缩放输入区、状态栏</li>
-              <li>输入区自动伸缩 — 最多 12 行，超出滚动，支持拖拽调整高度</li>
-              <li>简洁选中代码徽章 — 仅显示文件名和行范围，不展示代码片段</li>
-              <li>附件上传和 UI 操作使用 IntelliJ 原生图标</li>
+              <li>VSCode industrial dark-theme input panel — 4-layer vertical layout: notification bar, toolbar, resizable input area, status bar</li>
+              <li>Input area auto-resizing — up to 12 rows, scrolls beyond that, supports drag-to-adjust height</li>
+              <li>Concise selected-code badge — shows only the file name and line range, not the code snippet</li>
+              <li>Attachment upload and UI operations use native IntelliJ icons</li>
             </ul>
             <h3>v2.2.0</h3>
             <ul>
-              <li>多模型供应商支持 — 设置面板可在 DeepSeek 和 Agnes 2.0 Flash 之间切换</li>
-              <li>集成 Agnes 2.0 Flash — 可配置 API Key、模型名和 Base URL</li>
-              <li>设置 UI 更新 — 新增 API Provider 选择器和 Agnes 专属配置区域</li>
+              <li>Multi-model provider support — the settings panel can switch between DeepSeek and Agnes 2.0 Flash</li>
+              <li>Agnes 2.0 Flash integration — configurable API Key, model name and Base URL</li>
+              <li>Settings UI update — added an API Provider selector and a dedicated Agnes configuration area</li>
             </ul>
             <h3>v2.1.0</h3>
             <ul>
-              <li>版本更新弹窗 — 插件更新后自动显示更新记录</li>
-              <li>多项 Bug 修复和稳定性改进</li>
-              <li>向后兼容 IDEA 24.1.x ~ 26.3.x</li>
+              <li>Version-update popup — automatically shows the changelog after a plugin update</li>
+              <li>Multiple bug fixes and stability improvements</li>
+              <li>Backward compatible with IDEA 24.1.x ~ 26.3.x</li>
             </ul>
             <h3>v2.0.2</h3>
             <ul>
-              <li>新增 Agent 模式 — 在聊天面板底部下拉菜单切换 "💬 问答" 和 "🤖 Agent"</li>
-              <li>Agent 模式下 AI 自动扫描项目目录，定位目标文件，根据用户请求执行创建/修改/删除操作</li>
-              <li>递归收集项目源文件（跳过 .git/build/target/node_modules 等）作为 AI 上下文</li>
-              <li>AI 输出结构化 <code>&lt;file path="..."&gt;</code> 标签指定文件操作</li>
-              <li>路径穿越防护 — 规范化路径校验确保所有写入操作限制在项目根目录内</li>
-              <li>用户确认对话框 — 执行前展示完整的待操作文件列表</li>
-              <li>Agent 模式下支持多轮对话 — 连续请求间保持完整消息历史</li>
-              <li>Agent 激活时发送按钮文字变为 "执行 (Enter)"</li>
+              <li>Added Agent mode — switch between "💬 Q&amp;A" and "🤖 Agent" in the dropdown at the bottom of the chat panel</li>
+              <li>In Agent mode the AI automatically scans the project directory, locates target files, and performs create/modify/delete operations according to the user's request</li>
+              <li>Recursively collects project source files (skipping .git/build/target/node_modules etc.) as AI context</li>
+              <li>The AI outputs structured <code>&lt;file path="..."&gt;</code> tags to specify file operations</li>
+              <li>Path-traversal protection — canonicalized path validation ensures all write operations stay inside the project root</li>
+              <li>User confirmation dialog — shows the complete list of pending file operations before executing</li>
+              <li>Agent mode supports multi-turn conversations — the full message history is kept between consecutive requests</li>
+              <li>When Agent is active the send button text changes to "Execute (Enter)"</li>
             </ul>
             <h3>v2.0.1</h3>
             <ul>
-              <li>大规模 UI 重构 — ChatPanel 拆分为模块化组件（MessageBubble, ChatInputBar, ChatToolbar, SessionBar）</li>
-              <li>AI 回复支持 Markdown 渲染（粗体、斜体、行内代码、链接、列表）</li>
-              <li>消息美化：圆角、阴影、圆形头像图标（用户/助手）、时间戳显示</li>
-              <li>用量和历史对话框抽取为独立类</li>
-              <li>优化打包 — 从 okhttp JAR 中剔除 Android/安全平台类以通过 Plugin Verifier</li>
-              <li>修复 IntelliJ 2025.1/2025.2 兼容性问题</li>
+              <li>Large-scale UI rework — ChatPanel split into modular components (MessageBubble, ChatInputBar, ChatToolbar, SessionBar)</li>
+              <li>AI replies support Markdown rendering (bold, italic, inline code, links, lists)</li>
+              <li>Message beautification: rounded corners, shadows, circular avatar icons (user/assistant), timestamp display</li>
+              <li>Usage and history dialogs extracted into separate classes</li>
+              <li>Packaging optimization — stripped Android/security platform classes from the okhttp JAR to pass Plugin Verifier</li>
+              <li>Fixed IntelliJ 2025.1/2025.2 compatibility issues</li>
             </ul>
             <h3>v1.0.5</h3>
             <ul>
-              <li>新增问题导航侧栏 — 每次显示 6 个节点，滚动时动态更新，修复点击节点未滚动到对应回复的问题</li>
-              <li>消息气泡自适应宽度（容器宽度的 75%），布局更均衡易读</li>
+              <li>Added issue-navigation sidebar — shows 6 nodes at a time with dynamic updates on scroll; fixed the issue where clicking a node did not scroll to the corresponding reply</li>
+              <li>Message bubbles auto-fit their width (75% of container width) for a more balanced, readable layout</li>
             </ul>
             <h3>v1.0.4</h3>
             <ul>
-              <li>聊天输入区文件上传按钮 — 点击选择本地文件，以上传预览卡片形式展示在输入区上方；文件内容随消息发送作为上下文</li>
-              <li>选中代码预览卡片 — 显示文件、行范围和选中代码前 3 行，支持一键关闭</li>
-              <li>代码块卡片（CodeBlockCard）抽取为可复用 UI 组件，带复制和插入按钮</li>
-              <li>清空按钮移至会话栏，方便管理会话</li>
+              <li>Chat input file-upload button — click to select a local file, shown above the input area as an upload preview card; file content is sent with the message as context</li>
+              <li>Selected-code preview card — shows the file, line range and the first 3 lines of the selected code, with one-click close</li>
+              <li>Code block card (CodeBlockCard) extracted as a reusable UI component with copy and insert buttons</li>
+              <li>Clear button moved to the conversation bar for easier conversation management</li>
             </ul>
             <h3>v1.0.3</h3>
             <ul>
-              <li>修复 AI 回复重复消耗双倍 Token 的问题</li>
-              <li>修复右键菜单图标过大的问题</li>
-              <li>修复 Agent 结果对话框过大的问题</li>
-              <li>改进代码补全：单建议模式、优化 FIM 提示词</li>
+              <li>Fixed the issue of AI replies consuming double Tokens</li>
+              <li>Fixed the oversized right-click menu icon</li>
+              <li>Fixed the oversized Agent result dialog</li>
+              <li>Improved code completion: single-suggestion mode, optimized FIM prompts</li>
             </ul>
             <h3>v1.0.0</h3>
             <ul>
-              <li>AI 驱动的行内代码补全</li>
-              <li>流式聊天问答面板</li>
-              <li>Agent 模式：解释代码、生成代码、审查代码、优化代码</li>
-              <li>右键菜单集成</li>
-              <li>API Key 配置页面</li>
+              <li>AI-driven inline code completion</li>
+              <li>Streaming chat Q&amp;A panel</li>
+              <li>Agent mode: explain code, generate code, review code, optimize code</li>
+              <li>Right-click menu integration</li>
+              <li>API Key configuration page</li>
             </ul>
         """.trimIndent()
 
@@ -363,9 +370,16 @@ class ChatToolWindowFactory : ToolWindowFactory {
          * English version of the changelog HTML.
          */
         private val CHANGELOG_HTML_EN = """
+            <h3>v2.8.0</h3>
+            <ul>
+              <li>[New] Chat-bubble style icons for the tool window, actions, and assistant avatar</li>
+              <li>[Improved] Live step-by-step status (analyzing → reasoning → generating) while streaming instead of a static spinner</li>
+              <li>[Improved] Copilot-style chat UI polish</li>
+              <li>[Changed] Plugin renamed to DeepSeek-AI-Helper</li>
+            </ul>
             <h3>v2.7.6</h3>
             <ul>
-              <li>【Fixed】UI cutoff</li>
+              <li>[Fixed] UI cutoff</li>
             </ul>
             <h3>v2.7.5</h3>
             <ul>
@@ -442,7 +456,7 @@ class ChatToolWindowFactory : ToolWindowFactory {
             <h3>v2.5.7</h3>
             <ul>
               <li>[New] Right-click "Set Language" — One-click jump to theme settings, independently control agent output language (isolated from chat panel)</li>
-              <li>[New] Independent Agent Language Setting — New "Agent Output Language" dropdown in theme settings, supports 中文/English toggle</li>
+              <li>[New] Independent Agent Language Setting — New "Agent Output Language" dropdown in theme settings, supports Chinese/English toggle</li>
               <li>[Improved] Dynamic menu text — Set Language / Explain Code / Review Code / Upload to Chat update in real-time as language changes</li>
               <li>[Improved] Explain/Review streaming output — Switched to SSE streaming (token-by-token), removed domain restriction prompt, first token appears immediately — 30-50% faster response</li>
             </ul>
@@ -561,7 +575,7 @@ class ChatToolWindowFactory : ToolWindowFactory {
             <h3>v2.3.0</h3>
             <ul>
               <li>Annotation-aware completion — Automatically analyzes @Data/@Service/@RestController/@Entity annotations and recommends synthetic methods (Lombok getter/setter/builder) and code patterns (Spring REST skeleton, JPA mapping, constructor injection)</li>
-              <li>Comment-aware completion — Write natural language in comments to generate code, supporting Chinese: <code>// 根据id删除订单</code> → deleteById, <code>// 查询所有</code> → findAll, <code>// 获取name字段</code> → getName and 30+ other patterns</li>
+              <li>Comment-aware completion — Write natural language in comments to generate code, supporting Chinese: <code>// delete order by id</code> → deleteById, <code>// query all</code> → findAll, <code>// get name field</code> → getName and 30+ other patterns</li>
               <li>@-annotation auto-completion — When typing @ on a class/method/field/parameter, automatically recommends applicable annotations for the current context</li>
               <li>New independent settings toggles — Enable/disable "Annotation-aware completion" and "Comment-aware completion" separately</li>
               <li>Static analysis pre-filter — IntelliJ PSI/AST-based static completion as a pre-filter layer for AI completion, reducing unnecessary API calls</li>
@@ -614,7 +628,7 @@ class ChatToolWindowFactory : ToolWindowFactory {
               <li>Path traversal protection — normalized path validation ensures all write operations stay within the project root</li>
               <li>User confirmation dialog — shows complete file operation list before execution</li>
               <li>Multi-turn conversation support in Agent mode — full message history preserved across consecutive requests</li>
-              <li>Send button text changes to "执行 (Enter)" when Agent is active</li>
+              <li>Send button text changes to "Execute (Enter)" when Agent is active</li>
             </ul>
             <h3>v2.0.1</h3>
             <ul>

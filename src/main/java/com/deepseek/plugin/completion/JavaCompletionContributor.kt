@@ -5,15 +5,15 @@ import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.patterns.PlatformPatterns
 
 /**
- * Java 代码补全贡献者 —— 仅在 Java 插件存在时注册。
+ * Java code completion contributor — registered only when the Java plugin is present.
  *
- * 包含基于 PSI/AST 的静态分析前置过滤，
- * 以及注解感知 / 注释感知补全。
+ * Includes static analysis pre-filtering based on PSI/AST,
+ * as well as annotation-aware / comment-aware completion.
  */
 class JavaCompletionContributor : CompletionContributor() {
 
     init {
-        // 静态分析 Provider —— 优先执行，候选充足时跳过 AI
+        // Static analysis Provider — runs first, skips AI when there are enough candidates
         extend(
             CompletionType.BASIC,
             PlatformPatterns.psiElement(),

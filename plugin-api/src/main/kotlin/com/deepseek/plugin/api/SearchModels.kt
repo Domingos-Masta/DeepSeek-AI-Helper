@@ -1,7 +1,7 @@
 package com.deepseek.plugin.api
 
 /**
- * grep 搜索结果中的单条匹配。
+ * A single match in grep search results.
  */
 data class GrepMatch(
     val filePath: String,
@@ -12,7 +12,7 @@ data class GrepMatch(
 )
 
 /**
- * grep 搜索的整体结果。
+ * The overall result of a grep search.
  */
 data class GrepResult(
     val query: String,
@@ -22,7 +22,7 @@ data class GrepResult(
 )
 
 /**
- * glob 结果。
+ * glob result.
  */
 data class GlobResult(
     val pattern: String,
@@ -30,7 +30,7 @@ data class GlobResult(
 )
 
 /**
- * 读取文件内容的结果。
+ * The result of reading file contents.
  */
 data class ReadResult(
     val filePath: String,
@@ -41,7 +41,7 @@ data class ReadResult(
 )
 
 /**
- * 工具调用的统一返回类型。
+ * Unified return type for tool calls.
  */
 sealed class ToolResult {
     data class Grep(val result: GrepResult) : ToolResult()
@@ -52,16 +52,16 @@ sealed class ToolResult {
 }
 
 /**
- * 从模型响应中解析出的工具调用。
+ * A tool call parsed from the model response.
  */
 data class ToolCall(
     val name: String,        // "grep", "glob", "read"
     val params: Map<String, String>,
-    val rawXml: String       // 原始 XML 片段，用于从响应中移除
+    val rawXml: String       // raw XML fragment, used to remove from the response
 )
 
 /**
- * 工具调用的结果反馈。
+ * Result feedback for a tool call.
  */
 data class ToolResultMessage(
     val toolName: String,

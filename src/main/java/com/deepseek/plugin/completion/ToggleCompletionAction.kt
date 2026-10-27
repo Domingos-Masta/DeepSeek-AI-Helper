@@ -8,8 +8,8 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.DumbAware
 
 /**
- * 快速切换 AI 补全启用/禁用。
- * 默认快捷键：Ctrl+Shift+,（需用户在 Keymap 中绑定）。
+ * Quickly toggles AI completion on/off.
+ * Default shortcut: Ctrl+Shift+, (the user must bind it in the Keymap).
  */
 class ToggleCompletionAction : AnAction(), DumbAware {
 
@@ -19,10 +19,10 @@ class ToggleCompletionAction : AnAction(), DumbAware {
         val settings = DeepSeekSettings.instance
         settings.completionEnabled = !settings.completionEnabled
         val status = if (settings.completionEnabled) "enabled" else "disabled"
-        // 通过状态栏提示（不弹对话框，避免打扰）
+        // Notify via the status bar (no dialog, to avoid interruption)
         val project = e.project ?: return
         com.intellij.openapi.wm.ToolWindowManager.getInstance(project).notifyByBalloon(
-            "DeepSeek AI CodeHelper",
+            "DeepSeek-AI-Helper",
             com.intellij.openapi.ui.MessageType.INFO,
             "AI Completion $status"
         )

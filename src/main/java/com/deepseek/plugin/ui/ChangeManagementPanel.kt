@@ -23,13 +23,13 @@ import javax.swing.*
 import javax.swing.border.CompoundBorder
 
 /**
- * 变更管理面板 — 全屏覆盖的变更查看与回滚界面。
+ * Change management panel — a full-screen change viewing and rollback UI.
  *
- * 展示所有 Agent 模式产生的变更记录，每条记录可展开查看具体文件，
- * 并提供「回滚」和「查看变更」两个操作按钮。
+ * Shows all change records produced by Agent mode. Each record can be expanded
+ * to view its files, with "Rollback" and "View changes" action buttons.
  *
- * @param project 当前 IntelliJ 项目
- * @param onClose 关闭面板返回聊天主界面时回调
+ * @param project The current IntelliJ project.
+ * @param onClose Called when the panel is closed to return to the main chat UI.
  */
 class ChangeManagementPanel(
     private val project: Project,
@@ -47,7 +47,7 @@ class ChangeManagementPanel(
         background = JBColor(Color(0xF0F0F0), Color(0x3C3F41))
         border = JBUI.Borders.empty()
 
-        // ── 顶部标题栏 ──
+        // ── Top title bar ──
         val headerPanel = JPanel().apply {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
             isOpaque = false
@@ -80,7 +80,7 @@ class ChangeManagementPanel(
 
         add(headerPanel, BorderLayout.NORTH)
 
-        // ── 记录列表（可滚动） ──
+        // ── Record list (scrollable) ──
         val scrollPane = JBScrollPane(recordListPanel).apply {
             isOpaque = false
             viewport.isOpaque = false
@@ -93,7 +93,7 @@ class ChangeManagementPanel(
     }
 
     /**
-     * 刷新变更记录列表（从 ChangeManagementStore 重新读取）。
+     * Refreshes the change record list (re-reads from ChangeManagementStore).
      */
     fun refreshRecords() {
         recordListPanel.removeAll()
@@ -120,14 +120,14 @@ class ChangeManagementPanel(
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  内部类：单条变更记录卡片
+    //  Inner class: single change record card
     // ════════════════════════════════════════════════════════════════
 
     /**
-     * 一条变更记录的卡片 UI。
+     * Card UI for a single change record.
      *
-     * 默认只显示标题行（标题 + 时间），点击可展开/收起文件列表。
-     * 每个文件项右下角有「回滚」和「查看变更」按钮。
+     * By default only the title row (title + time) is shown; click to expand/collapse
+     * the file list. Each file row has "Rollback" and "View changes" buttons at the bottom right.
      */
     inner class ChangeRecordCard(private val record: ChangeRecord) : JPanel() {
 
@@ -146,7 +146,7 @@ class ChangeManagementPanel(
             isOpaque = false
             border = JBUI.Borders.empty(0, 12, 0, 12)
 
-            // ── 标题行（可点击展开/收起） ──
+            // ── Title row (click to expand/collapse) ──
             val headerRow = JPanel(BorderLayout()).apply {
                 isOpaque = true
                 background = JBColor(Color(0xFFFFFF), Color(0x4A4A4A))
@@ -163,7 +163,7 @@ class ChangeManagementPanel(
                 })
             }
 
-            // 展开/收起箭头指示器
+            // Expand/collapse arrow indicator
             headerRow.add(expandIcon, BorderLayout.WEST)
 
             val titleText = "  ${record.title}  ${record.formattedTime()}"
@@ -173,7 +173,7 @@ class ChangeManagementPanel(
             }
             headerRow.add(titleLabel, BorderLayout.CENTER)
 
-            // 右侧操作区：回滚本条 + 删除
+            // Right action area: rollback this record + delete
             val rightPanel = JPanel(FlowLayout(FlowLayout.RIGHT, 4, 0)).apply {
                 isOpaque = false
             }
@@ -199,7 +199,7 @@ class ChangeManagementPanel(
 
             add(headerRow)
 
-            // ── 文件列表区（默认隐藏） ──
+            // ── File list area (hidden by default) ──
             contentPanel.isVisible = false
             contentPanel.add(Box.createVerticalStrut(4))
             for (changeInfo in record.changes) {
@@ -214,7 +214,7 @@ class ChangeManagementPanel(
             contentPanel.isVisible = expanded
             revalidate()
             repaint()
-            // 通知父级刷新布局
+            // Notify the parent to refresh layout
             recordListPanel.revalidate()
             recordListPanel.repaint()
         }
@@ -225,8 +225,8 @@ class ChangeManagementPanel(
         }
 
         /**
-         * 批量回滚本条记录下的所有文件变更。
-         * 确认后逐个文件执行回滚，完成后移除记录并刷新面板。
+         * Batch-rolls back all file changes under this record.
+         * After confirmation, rolls back each file, then removes the record and refreshes the panel.
          */
         private fun rollbackThisRecord() {
             val count = record.changes.size
@@ -255,7 +255,7 @@ class ChangeManagementPanel(
                     }
                 }
 
-                // 无论成功多少，都移除这条记录
+                // Remove this record regardless of how many succeeded
                 changeStore.removeRecord(record)
 
                 com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
@@ -271,7 +271,7 @@ class ChangeManagementPanel(
         }
 
         /**
-         * 删除本条变更记录（不回滚文件，仅移除记录）。
+         * Deletes this change record (removes only the record; files are not rolled back).
          */
         private fun deleteThisRecord() {
             val confirmed = Messages.showYesNoDialog(
@@ -291,15 +291,15 @@ class ChangeManagementPanel(
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  内部类：单个文件变更行
+    //  Inner class: single file change row
     // ════════════════════════════════════════════════════════════════
 
     /**
-     * 单个文件变更行。
+     * A single file change row.
      *
-     * 布局:
+     * Layout:
      * ┌──────────────────────────────────────────────┐
-     * │ <文件路径>                   [回滚] [查看变更] │
+     * │ <file path>              [Rollback] [View changes] │
      * └──────────────────────────────────────────────┘
      */
     inner class FileChangeRow(private val change: FileChangeInfo) : JPanel(BorderLayout()) {
@@ -310,7 +310,7 @@ class ChangeManagementPanel(
             border = JBUI.Borders.empty(6, 14, 6, 8)
             maximumSize = Dimension(Short.MAX_VALUE.toInt(), 40)
 
-            // ── 文件路径标签 ──
+            // ── File path label ──
             val fileName = File(change.filePath).name
             val fileIcon = if (change.isNew) I18n.tr("change.file.icon") else I18n.tr("change.file.icon.default")
             val fileLabel = JLabel("$fileIcon $fileName").apply {
@@ -320,12 +320,12 @@ class ChangeManagementPanel(
             }
             add(fileLabel, BorderLayout.WEST)
 
-            // ── 按钮区（右下角） ──
+            // ── Button area (bottom right) ──
             val buttonPanel = JPanel(FlowLayout(FlowLayout.RIGHT, 4, 0)).apply {
                 isOpaque = false
             }
 
-            // 查看变更按钮
+            // View changes button
             val viewChangesBtn = createToolbarButton(
                 icon = AllIcons.Actions.Diff,
                 tooltip = I18n.tr("change.view"),
@@ -335,7 +335,7 @@ class ChangeManagementPanel(
             )
             buttonPanel.add(viewChangesBtn)
 
-            // 回滚按钮
+            // Rollback button
             val rollbackBtn = createToolbarButton(
                 icon = AllIcons.Actions.Rollback,
                 tooltip = I18n.tr("change.rollback.file"),
@@ -350,11 +350,11 @@ class ChangeManagementPanel(
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  操作实现
+    //  Action implementations
     // ════════════════════════════════════════════════════════════════
 
     /**
-     * 打开 IntelliJ Diff 窗口，对比原始内容与当前文件内容。
+     * Opens the IntelliJ Diff window to compare original content with current file content.
      */
     private fun showDiff(change: FileChangeInfo) {
         val fileName = File(change.filePath).name
@@ -367,7 +367,7 @@ class ChangeManagementPanel(
             val originalText = change.originalContent.toString(Charsets.UTF_8)
             val currentText = currentContent.toString(Charsets.UTF_8)
 
-            // 获取 VirtualFile 以启用语法高亮（注释等会显示为对应语言颜色）
+            // Get the VirtualFile to enable syntax highlighting (comments etc. are colored per language)
             val virtualFile = LocalFileSystem.getInstance().findFileByIoFile(file)
 
             val leftContent = contentFactory.create(project, originalText, virtualFile)
@@ -387,7 +387,7 @@ class ChangeManagementPanel(
     }
 
     /**
-     * 回滚单个文件：修改文件写回原始内容，新建文件直接删除。
+     * Rolls back a single file: writes the original content back for modified files, and deletes newly created files.
      */
     private fun rollbackFile(change: FileChangeInfo) {
         val fileName = File(change.filePath).name
@@ -410,7 +410,7 @@ class ChangeManagementPanel(
         WriteCommandAction.runWriteCommandAction(project) {
             rollbackOk = changeStore.rollbackFile(change)
         }
-        // 弹窗必须在 write action 之外（EDT invokeLater），否则触发 "AWT events are not allowed inside write action"
+        // Dialogs must run outside the write action (EDT invokeLater), otherwise it triggers "AWT events are not allowed inside write action"
         com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
             if (rollbackOk) {
                 Messages.showInfoMessage(project, I18n.tr("change.result.success", fileName, 1, 1), I18n.tr("change.rollback"))

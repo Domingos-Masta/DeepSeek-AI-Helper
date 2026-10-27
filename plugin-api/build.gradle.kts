@@ -17,7 +17,7 @@ repositories {
 }
 
 dependencies {
-    // 纯数据模型 + 接口定义，仅需要 Gson 的 @SerializedName 注解
+    // Pure data models + interface definitions; only needs Gson's @SerializedName annotation
     implementation("com.google.code.gson:gson:2.11.0")
     implementation(kotlin("stdlib"))
 }

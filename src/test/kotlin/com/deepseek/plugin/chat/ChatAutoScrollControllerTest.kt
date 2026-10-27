@@ -32,11 +32,11 @@ class ChatAutoScrollControllerTest {
         controller.resumeFollowing()
         assertTrue(controller.followsBottom)
 
-        // 8px 阈值：792 + 200 = 992 >= 1000 - 8
+        // 8px threshold: 792 + 200 = 992 >= 1000 - 8
         controller.onUserViewportChanged(value = 792, visibleAmount = 200, maximum = 1_000)
         assertTrue(controller.followsBottom)
 
-        // 边界：791 + 200 = 991 < 992 → 离开底部（仅阈值 8 成立；若阈值 50 则 991 >= 950 仍为 true）
+        // Boundary: 791 + 200 = 991 < 992 → left the bottom (holds only with threshold 8; with threshold 50, 991 >= 950 would still be true)
         controller.onUserViewportChanged(value = 791, visibleAmount = 200, maximum = 1_000)
         assertFalse(controller.followsBottom)
     }

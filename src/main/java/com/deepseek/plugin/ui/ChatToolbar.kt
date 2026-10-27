@@ -33,7 +33,7 @@ class ChatToolbar(
         )
         isOpaque = false
 
-        // ── 右侧按钮区：会话历史 + 变更管理 + 技能设置 ──
+        // ── Right button area: session history + change management + skill settings ──
         val rightPanel = JPanel(FlowLayout(FlowLayout.RIGHT, 0, 0)).apply { isOpaque = false }
         rightPanel.add(createToolbarButton(
             icon = AllIcons.Actions.Find,

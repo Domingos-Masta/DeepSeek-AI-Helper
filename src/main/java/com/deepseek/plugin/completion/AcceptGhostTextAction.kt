@@ -8,23 +8,23 @@ import com.intellij.openapi.project.DumbAware
 import java.awt.event.KeyEvent
 
 /**
- * 接受 Ghost Text 补全的动作。
+ * Action that accepts a Ghost Text completion.
  *
- * 当编辑器中有 [GhostTextManager] 管理的 Ghost Text 时，
- * 按 Tab（或自定义快捷键）将其内容写入文档。
+ * When the editor has Ghost Text managed by [GhostTextManager],
+ * pressing Tab (or a custom shortcut) writes its content into the document.
  *
- * 没有 Ghost Text 时，通过向编辑器组件分发 Tab 键事件来触发默认行为
- *（缩进 / 代码补全），避免直接调用其他 AnAction（违反 OverrideOnly API 约束）。
+ * When there is no Ghost Text, it dispatches a Tab key event to the editor component to trigger the default behavior
+ * (indentation / code completion), avoiding directly invoking other AnActions (which would violate the OverrideOnly API constraint).
  */
 class AcceptGhostTextAction : AnAction(), DumbAware {
 
     override fun actionPerformed(e: AnActionEvent) {
         val editor = e.getData(CommonDataKeys.EDITOR) ?: return
         if (GhostTextManager.acceptGhostText(editor)) {
-            // Ghost Text 被接收，不需要执行默认行为
+            // Ghost Text was accepted; no need to run the default behavior
             return
         }
-        // 没有 Ghost Text 时，向编辑器组件分发 Tab 键事件以触发默认行为
+        // When there is no Ghost Text, dispatch a Tab key event to the editor component to trigger the default behavior
         dispatchTabKey(editor)
     }
 

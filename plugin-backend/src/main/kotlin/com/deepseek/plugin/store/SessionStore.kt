@@ -14,10 +14,10 @@ import java.nio.file.StandardCopyOption
  * Persists chat sessions to disk, loads them on startup.
  * Sessions are kept indefinitely.
  *
- * 防 crash 设计：
- * - Atomic write：先写 .tmp 再 rename，避免写入中途崩溃导致文件损坏
- * - 备份文件：每次成功保存时同步更新 .bak 文件
- * - 自动恢复：主文件损坏时自动从 .bak 恢复
+ * Crash-resilient design:
+ * - Atomic write: write to .tmp first, then rename, to avoid file corruption if a crash happens mid-write
+ * - Backup file: the .bak file is synced on every successful save
+ * - Auto-recovery: when the main file is corrupted, restore automatically from .bak
  *
  * File: <project>/.idea/deepseek-sessions.json
  * Backup: <project>/.idea/deepseek-sessions.json.bak
@@ -43,7 +43,7 @@ class SessionStore(private val projectBasePath: String?) {
         var sessionCounter: Int = 1
     )
 
-    /** 主文件 */
+    /** Main file */
     private val file: File?
         get() {
             val base = projectBasePath ?: return null
@@ -52,7 +52,7 @@ class SessionStore(private val projectBasePath: String?) {
             return File(dir, FILE_NAME)
         }
 
-    /** 备份文件 */
+    /** Backup file */
     private val backupFile: File?
         get() {
             val base = projectBasePath ?: return null
@@ -62,38 +62,38 @@ class SessionStore(private val projectBasePath: String?) {
 
     /**
      * Load sessions from disk. Returns null if nothing saved.
-     * 自动从备份恢复损坏的主文件。
+     * Automatically restores a corrupted main file from the backup.
      */
     fun load(): Pair<List<ChatSession>, Int>? {
         val f = file ?: return null
         if (!f.exists()) return null
 
-        // 尝试加载主文件
+        // Try loading the main file
         val primary = tryLoad(f)
         if (primary != null) return primary
 
-        // 主文件损坏，尝试从备份恢复
+        // Main file corrupted; try restoring from backup
         val bak = backupFile
         if (bak != null && bak.exists()) {
-            LOG.warn("主会话文件损坏，正在从备份恢复: ${bak.absolutePath}")
+            LOG.warn("Main session file corrupted; restoring from backup: ${bak.absolutePath}")
             val restored = tryLoad(bak)
             if (restored != null) {
-                // 恢复成功 → 用备份覆盖主文件
+                // Restore succeeded → overwrite the main file with the backup
                 try {
                     Files.copy(bak.toPath(), f.toPath(), StandardCopyOption.REPLACE_EXISTING)
                 } catch (e: Exception) {
-                    LOG.warn("无法从备份恢复会话文件", e)
+                    LOG.warn("Unable to restore the session file from backup", e)
                 }
                 return restored
             }
         }
 
-        // 备份也损坏了
-        LOG.error("会话文件及备份均损坏，会话丢失")
+        // Backup is also corrupted
+        LOG.error("Both the session file and its backup are corrupted; session lost")
         return null
     }
 
-    /** 尝试从指定文件加载，返回 null 表示文件损坏 */
+    /** Attempts to load from the specified file; returns null if the file is corrupted */
     private fun tryLoad(f: File): Pair<List<ChatSession>, Int>? {
         return try {
             val json = f.readText(Charsets.UTF_8)
@@ -105,7 +105,7 @@ class SessionStore(private val projectBasePath: String?) {
 
             Pair(sessions, store.sessionCounter)
         } catch (e: Exception) {
-            LOG.warn("无法加载会话文件: ${f.absolutePath}", e)
+            LOG.warn("Unable to load session file: ${f.absolutePath}", e)
             null
         }
     }
@@ -113,10 +113,10 @@ class SessionStore(private val projectBasePath: String?) {
     /**
      * Save sessions to disk.
      *
-     * 写入策略：
-     * 1. 先原子写入 .tmp 文件
-     * 2. rename .tmp → 主文件
-     * 3. 同步复制到 .bak 备份
+     * Write strategy:
+     * 1. First atomically write the .tmp file
+     * 2. rename .tmp → main file
+     * 3. Copy to the .bak backup in sync
      */
     fun save(sessions: List<ChatSession>, sessionCounter: Int) {
         val f = file ?: return
@@ -129,24 +129,24 @@ class SessionStore(private val projectBasePath: String?) {
             )
             val json = gson.toJson(store)
 
-            // 1. 原子写入 .tmp
+            // 1. Atomic write to .tmp
             val tmp = File(f.parentFile, f.name + ".tmp")
             tmp.writeText(json, Charsets.UTF_8)
 
-            // 2. rename → 主文件
+            // 2. rename → main file
             Files.move(tmp.toPath(), f.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
 
-            // 3. 同步备份
+            // 3. Sync backup
             val bak = backupFile
             if (bak != null) {
                 try {
                     Files.copy(f.toPath(), bak.toPath(), StandardCopyOption.REPLACE_EXISTING)
                 } catch (e: Exception) {
-                    LOG.warn("无法创建会话备份文件", e)
+                    LOG.warn("Unable to create the session backup file", e)
                 }
             }
         } catch (e: Exception) {
-            SessionException("保存会话失败", e).also {
+            SessionException("Failed to save session", e).also {
                 LOG.error(it.toLogString())
             }
         }

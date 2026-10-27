@@ -15,35 +15,35 @@ import java.util.Base64
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * 图片解析客户端，支持多供应商.
+ * Image parsing client supporting multiple providers.
  *
- * 根据 settings.imageParsingModel 选择图片解析供应商：
- * - "agnes"   → 使用 Agnes API (复用 Agnes 密钥)
- * - "stepfun"  → 使用 StepFun API (使用独立的 StepFun 密钥)
- * - "nvidia"  → 使用 NVIDIA API (复用 NVIDIA 密钥)
+ * Selects the image parsing provider based on settings.imageParsingModel:
+ * - "agnes"   → uses the Agnes API (reuses the Agnes key)
+ * - "stepfun"  → uses the StepFun API (uses a dedicated StepFun key)
+ * - "nvidia"  → uses the NVIDIA API (reuses the NVIDIA key)
  *
- * 将图片解析为文本描述，然后注入到 Chat 上下文中。
+ * Parses an image into a text description, then injects it into the Chat context.
  */
 class StepFunApiClient {
 
     private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
     private val gson = Gson()
 
-    /** 使用共享连接池的 HTTP 客户端 */
+    /** HTTP client using the shared connection pool */
     private val client get() = HttpClientProvider.stepFunClient
 
-    /** 追踪当前正在执行的 HTTP Call，用于强制取消 */
+    /** Tracks the currently executing HTTP Call for forced cancellation */
     private val currentCall = AtomicReference<Call?>(null)
 
     /**
-     * 强制取消当前正在执行的图片解析请求（如果有）。
-     * OkHttp 的 [Call.cancel] 会使 [Call.execute] 立即抛出 IOException("Canceled")。
+     * Forcefully cancels the currently executing image parsing request (if any).
+     * OkHttp's [Call.cancel] causes [Call.execute] to throw IOException("Canceled") immediately.
      */
     fun cancelCurrentCall() {
         currentCall.getAndSet(null)?.cancel()
     }
 
-    // ── 供应商配置 ──
+    // ── Provider configuration ──
 
     private data class ProviderConfig(
         val baseUrl: String,
@@ -75,7 +75,7 @@ class StepFunApiClient {
         }
     }
 
-    // ── 请求/响应模型 ──
+    // ── Request/response models ──
 
     data class ContentPart(
         val type: String,  // "text" | "image_url"
@@ -119,16 +119,16 @@ class StepFunApiClient {
         val usage: Usage? = null
     )
 
-    // ── 公开方法 ──
+    // ── Public methods ──
 
     /**
-     * 解析单张图片文件, 返回文本描述.
+     * Parses a single image file and returns a text description.
      *
-     * @param imagePath 图片文件的绝对路径
-     * @param prompt    可选的提示词, 默认要求模型详细描述图片
-     * @return 图片的文本描述, 失败时返回错误信息
+     * @param imagePath Absolute path to the image file
+     * @param prompt    Optional prompt; by default the model is asked to describe the image in detail
+     * @return Text description of the image, or an error message on failure
      */
-    fun parseImage(imagePath: String, prompt: String = "请详细描述这张图片中的内容"): Result<String> {
+    fun parseImage(imagePath: String, prompt: String = "Describe the content of this image in detail"): Result<String> {
         val settings = DeepSeekSettings.instance
         val provider = resolveProvider(settings)
 
@@ -139,18 +139,18 @@ class StepFunApiClient {
                 else -> "API Key (Agnes section)"
             }
             return Result.failure(IOException(
-                "${provider.displayName} API Key 未配置，请在 Settings → Tools → DeepSeek AI 的 $providerField 中设置"
+                "${provider.displayName} API key is not configured; set it in $providerField under Settings → Tools → DeepSeek AI"
             ))
         }
 
-        // H3: 图片解析限流检查（每分钟最多 10 次）
+        // H3: Image parsing rate-limit check (max 10 per minute)
         if (!HttpClientProvider.stepFunRateLimiter.tryAcquire()) {
-            return Result.failure(RateLimitException("图片解析过于频繁，请稍后再试"))
+            return Result.failure(RateLimitException("Image parsing is too frequent, please try again later"))
         }
 
-        // 读取图片并转为 base64 data URI
+        // Read the image and convert it to a base64 data URI
         val dataUri = readImageAsBase64(imagePath)
-            ?: return Result.failure(IOException("无法读取图片文件: $imagePath"))
+            ?: return Result.failure(IOException("Unable to read image file: $imagePath"))
 
         val request = VisionRequest(
             model = provider.model,
@@ -186,7 +186,7 @@ class StepFunApiClient {
                     val visionResp = gson.fromJson(responseBody, VisionResponse::class.java)
                     val content = visionResp.choices?.firstOrNull()?.message?.content ?: ""
                     if (content.isBlank()) {
-                        Result.failure(IOException("${provider.displayName} 返回了空内容"))
+                        Result.failure(IOException("${provider.displayName} returned empty content"))
                     } else {
                         Result.success(content.trim())
                     }
@@ -201,25 +201,25 @@ class StepFunApiClient {
     }
 
     /**
-     * 批量解析多张图片, 返回每张图片的描述列表.
-     * 每张图片独立调用 API.
+     * Parses multiple images in batch and returns a list of descriptions, one per image.
+     * Each image calls the API independently.
      */
     fun parseImages(imagePaths: List<String>): List<Pair<String, String>> {
         val results = mutableListOf<Pair<String, String>>()
         for (path in imagePaths) {
             val fileName = Paths.get(path).fileName.toString()
             val result = parseImage(path)
-            val description = result.getOrElse { e -> "[图片解析失败: ${e.message}]" }
+            val description = result.getOrElse { e -> "[Image parsing failed: ${e.message}]" }
             results.add(fileName to description)
         }
         return results
     }
 
-    // ── 内部方法 ──
+    // ── Internal methods ──
 
     /**
-     * 读取图片文件并转换为 base64 data URI 字符串.
-     * 支持 PNG, JPEG, GIF, BMP, WEBP 等常见格式.
+     * Reads an image file and converts it to a base64 data URI string.
+     * Supports common formats such as PNG, JPEG, GIF, BMP, WEBP.
      */
     private fun readImageAsBase64(imagePath: String): String? {
         return try {
@@ -233,7 +233,7 @@ class StepFunApiClient {
     }
 
     /**
-     * 根据文件扩展名检测 MIME 类型.
+     * Detects the MIME type from the file extension.
      */
     private fun detectMimeType(fileName: String): String {
         val ext = fileName.substringAfterLast('.', "").lowercase()
@@ -244,7 +244,7 @@ class StepFunApiClient {
             "bmp" -> "image/bmp"
             "webp" -> "image/webp"
             "svg" -> "image/svg+xml"
-            else -> "image/png" // 默认
+            else -> "image/png" // default
         }
     }
 

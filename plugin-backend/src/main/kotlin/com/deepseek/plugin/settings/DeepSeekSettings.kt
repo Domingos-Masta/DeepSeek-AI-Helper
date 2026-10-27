@@ -15,127 +15,127 @@ class DeepSeekSettings : PersistentStateComponent<DeepSeekSettings> {
     var maxTokens: Int = 4096
     var temperature: Double = 0.7
     var completionEnabled: Boolean = true
-    var completionModel: String = "deepseek-v4-flash"  // 空=使用主模型, 可单独指定
+    var completionModel: String = "deepseek-v4-flash"  // Empty = use the main model; can be specified separately
     var completionMaxTokens: Int = 256
     var completionDelayMs: Long = 500
-    var completionMinPrefix: Int = 2           // 最少输入字符数才触发补全
-    var maxContextLines: Int = 30              // 补全时发送的最大上下文行数
+    var completionMinPrefix: Int = 2           // Minimum input character count to trigger completion
+    var maxContextLines: Int = 30              // Maximum context lines sent for completion
 
-    // 注解感知补全
-    var annotationAwareEnabled: Boolean = true // 是否启用注解分析驱动的补全/代码模式
+    // Annotation-aware completion
+    var annotationAwareEnabled: Boolean = true // Whether annotation-analysis-driven completion/code mode is enabled
 
-    // 注释感知补全
-    var commentAwareEnabled: Boolean = true    // 是否启用注释分析驱动的代码补全
+    // Comment-aware completion
+    var commentAwareEnabled: Boolean = true    // Whether comment-analysis-driven code completion is enabled
 
-    // 补全结果缓存
-    var completionCacheEnabled: Boolean = true // 是否启用 LRU 补全缓存
-    var completionCacheSize: Int = 20          // LRU 缓存容量（条）
+    // Completion result cache
+    var completionCacheEnabled: Boolean = true // Whether the LRU completion cache is enabled
+    var completionCacheSize: Int = 20          // LRU cache capacity (entries)
 
-    // 手动触发补全（Alt+P）配置
-    var completionManualTemperature: Double = 0.2  // 手动触发生成温度（AUTO 为 0.0）
-    var completionManualMaxTokens: Int = 512        // 手动触发生成最大 token 数（AUTO 为 256）
+    // Manual completion trigger (Alt+P) configuration
+    var completionManualTemperature: Double = 0.2  // Generation temperature for manual trigger (0.0 for AUTO)
+    var completionManualMaxTokens: Int = 512        // Max tokens for manual trigger (256 for AUTO)
 
-    // 状态栏指示器
-    var completionStatusBarEnabled: Boolean = true // 是否在状态栏显示补全状态
+    // Status bar indicator
+    var completionStatusBarEnabled: Boolean = true // Whether to show completion status in the status bar
 
-    // Ghost Text 渲染模式（替代 Lookup 列表）
-    var completionGhostTextEnabled: Boolean = true // 是否启用 Ghost Text 渲染（默认开启）
+    // Ghost Text rendering mode (replaces the Lookup list)
+    var completionGhostTextEnabled: Boolean = true // Whether Ghost Text rendering is enabled (on by default)
 
-    // API Provider 选择: "deepseek" | "agnes" | "nvidia"
+    // API Provider selection: "deepseek" | "agnes" | "nvidia"
     var provider: String = "deepseek"
 
-    // Agnes 2.0 Flash 配置
+    // Agnes 2.0 Flash configuration
     var agnesApiKey: String = ""
     var agnesModel: String = "agnes-2.5-flash"
     var agnesBaseUrl: String = "https://api.agnes-ai.cn/v1"
 
-    // NVIDIA 配置
+    // NVIDIA configuration
     var nvidiaApiKey: String = ""
     var nvidiaModel: String = "z-ai/glm-5.2"
     var nvidiaBaseUrl: String = "https://integrate.api.nvidia.com/v1"
 
-    // OpenRouter 配置
+    // OpenRouter configuration
     var openrouterApiKey: String = ""
     var openrouterModel: String = "inclusionai/ling-3.0-flash:free"
     var openrouterBaseUrl: String = "https://openrouter.ai/api/v1"
 
-    // 智谱 AI GLM 配置
+    // Zhipu AI GLM configuration
     var zhipuApiKey: String = ""
     var zhipuModel: String = "glm-4"
     var zhipuBaseUrl: String = "https://open.bigmodel.cn/api/paas/v4"
 
-    // Claude (Anthropic) 配置 — 走 Anthropic OpenAI 兼容端点
+    // Claude (Anthropic) configuration — uses the Anthropic OpenAI-compatible endpoint
     var anthropicApiKey: String = ""
     var anthropicModel: String = "claude-sonnet-4-5"
     var anthropicBaseUrl: String = "https://api.anthropic.com/v1"
 
-    // Codex (OpenAI) 配置 — 复用本地 ~/.codex 登录态
+    // Codex (OpenAI) configuration — reuses the local ~/.codex login state
     var codexApiKey: String = ""
     var codexModel: String = ""
     var codexBaseUrl: String = "https://api.openai.com/v1"
     var codexReasoningEffort: String = "medium"
 
-    // Claude/Codex CLI Agent 权限模式: "acceptEdits"(默认,仅文件编辑) | "bypass"(跳过全部权限) | "plan"(仅计划)
+    // Claude/Codex CLI Agent permission mode: "acceptEdits" (default, file edits only) | "bypass" (skip all permissions) | "plan" (plan only)
     var cliAgentPermissionMode: String = "acceptEdits"
 
-    // 图片解析配置
+    // Image parsing configuration
     var imageParsingModel: String = "agnes"         // "agnes" | "stepfun" | "nvidia"
-    var stepFunApiKey: String = ""                  // 仅 StepFun 需要独立密钥
+    var stepFunApiKey: String = ""                  // Only StepFun requires a separate key
 
-    // 版本跟踪 — 用户上次看到的版本号，用于显示更新记录弹窗
+    // Version tracking — the version the user last saw, used to show the changelog popup
     var lastSeenVersion: String = ""
 
-    // 更新日志语言偏好: "zh" | "en"
-    var changelogLanguage: String = "zh"
+    // Changelog language preference: "en"
+    var changelogLanguage: String = "en"
 
-    // 语言设置（控制 UI 界面 + AI 输出）: "zh" | "en"
-    var language: String = "zh"
+    // Language setting (controls the UI + AI output): "en"
+    var language: String = "en"
 
-    // 内容展示字号（聊天正文、Markdown、流式输出等）: 12~16
+    // Content font size (chat body, Markdown, streaming output, etc.): 12–16
     var contentFontSize: Int = 13
 
-    // 插件独立主题：follow=跟随 IDE / dark=固定深色 / light=固定浅色（不影响 IDE 全局主题）
+    // Plugin standalone theme: follow=follow IDE / dark=fixed dark / light=fixed light (does not affect the IDE global theme)
     var pluginTheme: String = "follow"
 
-    // Agentic Search 配置
-    var agenticSearchEnabled: Boolean = true   // 是否启用 Agentic Search（替代 RAG 的代码搜索）
-    var agenticSearchMaxRounds: Int = 3         // 多轮搜索的最大轮次数（1=单轮模式）
+    // Agentic Search configuration
+    var agenticSearchEnabled: Boolean = true   // Whether Agentic Search (code search replacing RAG) is enabled
+    var agenticSearchMaxRounds: Int = 3         // Max rounds for multi-round search (1 = single-round mode)
 
-    // Agent Pipeline 各 Phase 独立配置
-    var agentPhase0Provider: String = "agnes"          // 意图确认 Provider
-    var agentPhase0Model: String = "agnes-2.5-flash"  // 意图确认 Model
+    // Per-phase configuration for the Agent Pipeline
+    var agentPhase0Provider: String = "agnes"          // Intent confirmation provider
+    var agentPhase0Model: String = "agnes-2.5-flash"  // Intent confirmation model
 
-    // Phase 0 意图确认开关 — 关闭时跳过意图确认直接进入规划阶段
+    // Phase 0 intent confirmation toggle — when off, skips intent confirmation and goes straight to planning
     var agentPhase0Enabled: Boolean = true
 
-    // Phase 1 规划开关 — 关闭时跳过规划阶段直接进入编码
+    // Phase 1 planning toggle — when off, skips planning and goes straight to coding
     var agentPhase1Enabled: Boolean = true
 
-    // Phase 3 审查开关 — 关闭时跳过审查阶段
+    // Phase 3 review toggle — when off, skips the review phase
     var agentPhase3Enabled: Boolean = true
 
-    // 流式输出开关 — 关闭时使用同步调用，一次性返回完整结果
+    // Streaming output toggle — when off, uses a synchronous call and returns the complete result at once
     var streamingEnabled: Boolean = true
 
-    // 思考过程显示开关 — 关闭时 Q&A/Q&A 全文扫描模式下不显示模型的思考内容
+    // Reasoning display toggle — when off, the model's reasoning is hidden in Q&A / Q&A Full Scan modes
     var thinkingEnabled: Boolean = true
 
-    // 输出速度等级：0=最快(不限) 1=快速 2=适中 3=慢速
+    // Output speed level: 0=fastest (unlimited) 1=fast 2=medium 3=slow
     var outputSpeedLevel: Int = 2
 
-    var agentPhase1Provider: String = "deepseek"       // 规划 Provider
-    var agentPhase1Model: String = "deepseek-v4-pro"   // 规划 Model
-    var agentPhase2Provider: String = "deepseek"       // 编码 Provider
-    var agentPhase2Model: String = "deepseek-v4-flash" // 编码 Model
-    var agentPhase3Provider: String = "agnes"          // 审查 Provider
-    var agentPhase3Model: String = "agnes-2.5-flash"   // 审查 Model
+    var agentPhase1Provider: String = "deepseek"       // Planning provider
+    var agentPhase1Model: String = "deepseek-v4-pro"   // Planning model
+    var agentPhase2Provider: String = "deepseek"       // Coding provider
+    var agentPhase2Model: String = "deepseek-v4-flash" // Coding model
+    var agentPhase3Provider: String = "agnes"          // Review provider
+    var agentPhase3Model: String = "agnes-2.5-flash"   // Review model
 
-    // Q&A 分类器复用主 API Configuration 的 Provider/Model，无需单独存储字段
+    // The Q&A classifier reuses the main API configuration's provider/model; no separate fields needed
 
-    // ===== MCP Server 配置 =====
-    var mcpEnabled: Boolean = false      // 是否启用 MCP Server
-    var mcpAutoStart: Boolean = false    // IDE 启动时自动启动
-    var mcpPort: Int = 8080              // 监听端口
+    // ===== MCP Server configuration =====
+    var mcpEnabled: Boolean = false      // Whether the MCP Server is enabled
+    var mcpAutoStart: Boolean = false    // Auto-start when the IDE starts
+    var mcpPort: Int = 8080              // Listening port
 
     override fun getState(): DeepSeekSettings = this
     override fun loadState(state: DeepSeekSettings) {

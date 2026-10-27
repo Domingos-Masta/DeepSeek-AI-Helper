@@ -15,19 +15,19 @@ import java.io.IOException
 import javax.imageio.ImageIO
 
 /**
- * 拦截编辑器粘贴事件，检测剪贴板是否包含图片。
+ * Intercepts editor paste events and detects whether the clipboard contains an image.
  *
- * 执行顺序：
- * 1. 轻量检测是否有图片（仅 check flavor 列表，不读数据）
- * 2. 无图片 → 委托给 originalHandler，完全不影响原生粘贴
- * 3. 有图片 → 先委托 originalHandler 处理文本，再保存图片到聊天附件
+ * Execution order:
+ * 1. Lightweight check for an image (only checks the flavor list, without reading data)
+ * 2. No image → delegate to originalHandler, leaving native paste completely unaffected
+ * 3. Image present → first delegate text paste to originalHandler, then save the image to the chat attachment
  */
 @Suppress("DEPRECATION")
 class PasteImageHandler(private val originalHandler: EditorActionHandler?) : EditorActionHandler() {
 
     @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
     override fun doExecute(editor: Editor, caret: Caret?, dataContext: DataContext) {
-        // 轻量检测：是否含图片
+        // Lightweight check: whether an image is present
         val hasImage = try {
             val sysClip = Toolkit.getDefaultToolkit().systemClipboard
             sysClip.getAvailableDataFlavors().any { DataFlavor.imageFlavor.equals(it) }
@@ -35,16 +35,16 @@ class PasteImageHandler(private val originalHandler: EditorActionHandler?) : Edi
             false
         }
 
-        // 无图片 → 委托给原始处理器，零干扰
+        // No image → delegate to the original handler with zero interference
         if (!hasImage) {
             originalHandler?.execute(editor, caret, dataContext)
             return
         }
 
-        // 有图片：先委托原始处理器处理文本粘贴
+        // Image present: first delegate text paste to the original handler
         originalHandler?.execute(editor, caret, dataContext)
 
-        // 再保存图片到聊天附件
+        // Then save the image to the chat attachment
         try {
             val sysClip = Toolkit.getDefaultToolkit().systemClipboard
             val image = sysClip.getData(DataFlavor.imageFlavor) as? java.awt.Image ?: return
@@ -52,13 +52,13 @@ class PasteImageHandler(private val originalHandler: EditorActionHandler?) : Edi
             val savedFile = saveImageToProject(image, project)
             addAsChatAttachment(project, savedFile)
         } catch (_: Exception) {
-            // 静默忽略
+            // Silently ignore
         }
     }
 
     @Throws(IOException::class)
     private fun saveImageToProject(image: java.awt.Image, project: Project): File {
-        val projectPath = project.basePath ?: throw IOException("无法获取项目路径")
+        val projectPath = project.basePath ?: throw IOException("Unable to get the project path")
         val imagesDir = File(projectPath, "images")
         if (!imagesDir.exists()) imagesDir.mkdirs()
         val imageFile = File(imagesDir, "image_${System.currentTimeMillis()}.png")

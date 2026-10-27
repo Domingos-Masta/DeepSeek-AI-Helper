@@ -1,18 +1,17 @@
 package com.deepseek.plugin.i18n
 
 /**
- * 国际化工具 — 集中管理所有用户可见字符串。
+ * Internationalization helper — centralizes all user-visible strings.
  *
- * 用法：在 UI 代码中调用 `I18n.tr("key")` 获取当前语言的字符串。
- * 语言切换后，提示用户关闭并重新打开面板以刷新界面。
+ * Usage: call `I18n.tr("key")` in UI code to get the current-language string.
  */
 object I18n {
 
-    /** clientProperty key：标记组件对应的 i18n key，用于语言切换时刷新 text/tooltip */
+    /** clientProperty key: marks the i18n key associated with a component, used to refresh text/tooltip on language change */
     const val KEY_I18N = "deepseek.i18nKey"
 
     /**
-     * 设置组件 tooltip 并记录其 i18n key，语言切换后可即时刷新。
+     * Sets the component tooltip and records its i18n key so it can be refreshed after a language change.
      */
     fun tooltip(component: javax.swing.JComponent, key: String) {
         component.toolTipText = tr(key)
@@ -20,8 +19,8 @@ object I18n {
     }
 
     /**
-     * 遍历组件树，刷新所有通过 [tooltip] 标记过的悬浮提示文字。
-     * 语言切换时由各面板调用。
+     * Walks the component tree and refreshes all tooltips marked via [tooltip].
+     * Called by each panel when the language changes.
      */
     fun refreshTooltips(container: java.awt.Container) {
         fun walk(c: java.awt.Component) {
@@ -37,11 +36,10 @@ object I18n {
     }
 
     /**
-     * 当前语言： "zh" 或 "en"。
-     * 切换时通过 MessageBus 发布 [I18nTopics.LANGUAGE_CHANGED]，
-     * 各 UI 面板订阅后即时刷新，无需重开设置面板。
+     * Current language ("en"). When changed, publishes [I18nTopics.LANGUAGE_CHANGED]
+     * via the MessageBus so UI panels can refresh immediately without reopening settings.
      */
-    var currentLang: String = "zh"
+    var currentLang: String = "en"
         set(value) {
             val changed = field != value
             field = value
@@ -52,14 +50,14 @@ object I18n {
                         .syncPublisher(I18nTopics.LANGUAGE_CHANGED)
                         .languageChanged()
                 } catch (_: Exception) {
-                    // 非 IDE 环境（如单元测试/工具类调用）忽略
+                    // Ignore outside the IDE (e.g., unit tests / utility calls)
                 }
             }
         }
 
-    /** 根据 [currentLang] 获取 [key] 对应的翻译。找不到则返回 key 本身。 */
+    /** Returns the translation for [key] according to [currentLang]. Falls back to the key itself when missing. */
     fun tr(key: String, vararg args: Any?): String {
-        val map = if (currentLang == "en") en else zh
+        val map = en
         var result = map[key] ?: key
         if (args.isNotEmpty()) {
             result = result.format(*args)
@@ -68,501 +66,7 @@ object I18n {
     }
 
     // ════════════════════════════════════════════════════════════
-    //  中文映射表
-    // ════════════════════════════════════════════════════════════
-    private val zh = mapOf(
-        // ── ChatPanel ──
-        "chat.send" to "发送",
-        "chat.stop" to "停止",
-        "chat.send.enter" to "发送",
-        "chat.stop.enter" to "停止",
-        "chat.load.more" to "\u25B2 加载更早消息",
-        "chat.analysis.complete" to "✅ 上下文分析完成",
-        "chat.analysis.failed" to "上下文分析失败",
-        "chat.yes.this.is.what.i.mean" to "\u2705 是，就是这个意思",
-        "chat.no.i.need.to.supplement" to "\u274C 不是，我需要补充",
-        "chat.tooltip.send" to "发送消息",
-        "chat.tooltip.stop" to "停止",
-        "chat.tooltip.mode.select" to "模式选择",
-        "chat.mode.qa" to "Q&A 问答",
-        "chat.mode.qa.scan" to "Q&A 全文扫描",
-        "chat.mode.agent" to "Agent 智能体",
-        "chat.streaming.toggle" to "流式输出",
-        "chat.thinking.toggle" to "显示思考过程",
-        "chat.output.speed" to "输出速度",
-        "chat.output.speed.fastest" to "最快",
-        "chat.output.speed.fast" to "快速",
-        "chat.output.speed.medium" to "适中",
-        "chat.output.speed.slow" to "慢速",
-        "chat.settings" to "配置",
-        "chat.agent.pipeline.settings" to "Agent Pipeline Phase 设置...",
-        "chat.agent.phase0.toggle" to "Phase 0 意图确认",
-        "chat.agent.phase1.toggle" to "Phase 1 规划",
-        "chat.agent.phase3.toggle" to "Phase 3 审查",
-        "chat.confirm.agent.action" to "确认 Agent 操作",
-        "chat.confirm.execute" to "确认执行",
-        "chat.cancel" to "取消",
-        "chat.skip.prefix" to "⏭ 已跳过",
-        "chat.clear.all.sessions" to "清除所有会话",
-        "chat.placeholder" to "输入消息...  ·  Enter发送  ·  Shift+Enter换行",
-        "chat.planning" to "🤖 规划Agent(📋) 正在分析需求...",
-        "chat.parsing" to "解析中...",
-        "chat.understanding" to "\uD83E\uDD14 ...正在理解您的需求...",
-        "chat.searching" to "\uD83D\uDD0D Agent 正在搜索代码库...",
-        "chat.supplement" to "\uD83D\uDCDD 请补充说明您的需求",
-        "chat.api.error" to "\u26A0\uFE0F API 错误",
-        "chat.api.key.required" to "[ERROR] 请在 Settings...配置 API Key.",
-        "chat.api.key.required.anthropic" to "Claude API 问答需要 Anthropic API Key；本地 Claude 登录态请使用 Claude Code 模式。",
-        "chat.api.key.required.codex" to "Codex API 问答需要 OPENAI_API_KEY；ChatGPT OAuth 登录态请使用 Codex 本地模式。",
-        "chat.context.truncated" to "本轮上下文已按模型 Token 预算裁剪。",
-        "chat.api.key.missing.prefix" to "请先在设置中配置 ",
-        "chat.api.key.missing.suffix" to " 的 API Key",
-        "chat.warning.prefix" to "⚠️ ",
-        "chat.agent.complete" to "\u2705 Agent 执行完成！",
-        "chat.change.recorded" to "\uD83D\uDCCB 已记录到「变更管理」面板",
-        "chat.session.default" to "会话",
-        "chat.session" to "会话",
-        "chat.session.default.name" to "会话",
-        "chat.file.context" to "以下为文件...的内容",
-        "chat.image.context" to "以下为图片...的解析结果",
-        "chat.agent.error" to "\u274C Agent 执行失败",
-        "chat.agent.progress" to "DeepSeek AI",
-        "chat.agent.interprets" to "🤖 分析结果：",
-        "chat.agent.single.file" to "📝 简单任务，跳过规划与审查，直接进入编码",
-        "chat.upload" to "上传文件",
-        "attachment.filter" to "支持的格式（代码、文本、PDF、Word、Excel、PowerPoint、图片）",
-        "attachment.not.file" to "附件不存在或不是文件：%s",
-        "attachment.too.large" to "附件超过 25 MB 限制：%s",
-        "attachment.total.too.large" to "附件总大小不能超过 50 MB",
-        "attachment.too.many" to "单次最多添加 10 个附件",
-        "attachment.legacy.office" to "请先转换为 docx/xlsx/pptx：%s",
-        "attachment.unsupported" to "不支持该文件格式：%s",
-        "attachment.label" to "附件：%s",
-        "attachment.prepare.failed" to "附件准备失败",
-        "attachment.status.pending" to "待处理",
-        "attachment.status.processing" to "解析中",
-        "attachment.status.ready" to "可用",
-        "attachment.status.partial" to "部分可用",
-        "attachment.status.failed" to "失败",
-        "attachment.pdf.scanned" to "PDF 未提取到文字，已将前 %s 页转为图片。",
-        "chat.translate" to "翻译",
-        "chat.rollback.success" to "\u2705 已成功回滚",
-        "chat.rollback.partial" to "\u26A0\uFE0F 部分回滚完成",
-        "chat.rollback.failed" to "\u274C 回滚失败",
-        "chat.diff.error" to "差异对比错误",
-        "chat.error.network" to "网络错误",
-        "chat.error.rate.limit" to "请求过于频繁，请稍后再试",
-        "chat.error.save.failed" to "聊天记录保存失败，请检查磁盘空间",
-        "chat.error.operation.failed" to "Agent 文件操作执行失败",
-        "chat.error.operation.title" to "操作失败",
-
-        // ── ChatPanel ──
-        "chat.no.messages" to "该会话内暂无消息",
-
-        // ── ChatToolbar ──
-        "toolbar.history" to "会话历史",
-        "toolbar.change.management" to "变更管理",
-        "toolbar.settings" to "设置",
-
-        // ── SessionBar ──
-        "session.new" to "新建会话",
-        "session.clear.current" to "清除当前会话",
-
-        // ── ChatInputBar ──
-        "input.drag.resize" to "拖动调整输入区高度，双击重置",
-
-        // ── WelcomePanel ──
-        "welcome.title" to "DeepSeek AI CodeHelper",
-        "welcome.subtitle" to "AI-powered coding assistant for JETBRAINS",
-        "welcome.quickstart" to "快速开始",
-        "welcome.tip.send" to "\uD83D\uDCAC Enter \u53D1\u9001\u6D88\u606F",
-        "welcome.tip.newline" to "\u21E7+Enter \u6362\u884C",
-        "welcome.tip.context" to "\uD83D\uDCC4 \u9009\u4E2D\u4EE3\u7801\u540E\u81EA\u52A8\u586B\u5165\u8F93\u5165\u6846\u4F5C\u4E3A\u4E0A\u4E0B\u6587",
-        "welcome.tip.upload" to "\uD83D\uDCC1 \u4E0A\u4F20\u6587\u4EF6\u4F5C\u4E3A\u9644\u4EF6",
-        "welcome.tip.image" to "\uD83D\uDDBC Ctrl+V \u7C98\u8D34\u56FE\u7247\u81EA\u52A8\u4E0A\u4F20",
-        "welcome.tip.at" to "@ \u5F15\u7528\u9879\u76EE\u6587\u4EF6",
-        "welcome.version" to "v",
-
-        // ── HistoryDialog ──
-        "history.title" to "会话历史",
-        "history.open" to "进入会话",
-        "history.clear" to "clear",
-        "history.message.count" to "条消息",
-        "history.messages" to "条消息",
-        "history.tokens" to "tokens",
-
-        // ── MessageBubble ──
-        "bubble.me" to "me",
-        "bubble.dp.helper" to "DP Helper",
-        "bubble.thinking" to "思考中...",
-        "bubble.reasoning" to "思考过程",
-        "bubble.reasoning.word.count" to "共 {0} 字",
-        "bubble.reasoning.collapse" to "收起思考",
-        "bubble.reasoning.expand" to "展开思考过程",
-        "bubble.delete" to "删除此消息",
-
-        // ── UnifiedSettings ──
-        "settings.theme" to "主题设置",
-        "settings.skills" to "技能设置",
-        "settings.api.config" to "API 配置",
-        "settings.claude.codex" to "Claude / Codex 配置",
-        "settings.agent.pipeline" to "Agent 流水线配置",
-        "settings.code.completion" to "代码补全",
-        "settings.code.search" to "代码搜索",
-        "settings.image.parsing" to "图像解析",
-        "settings.close" to "关闭设置",
-        "settings.theme.title" to "主题设置 / Theme Settings",
-        "settings.theme.group" to "主题 / Theme",
-        "settings.theme.follow" to "跟随IDEA",
-        "settings.theme.dark" to "Dark 暗黑",
-        "settings.theme.light" to "White 纯白",
-        "settings.font.size" to "字体大小 / Font Size",
-        "settings.font.group" to "内容字体 / Content Font",
-        "settings.font.comment" to "切换后聊天面板即时刷新",
-        "settings.language.group" to "界面语言 / Interface Language",
-        "settings.language.comment" to "切换后即时生效，无需重开设置",
-
-        // ── McpSettingsPanel / MCP Server ──
-        "settings.mcp.server" to "MCP Server",
-        "settings.mcp.title" to "MCP Server 配置",
-        "settings.mcp.desc" to "MCP (Model Context Protocol) 服务将 IDEA 能力通过 SSE/HTTP 端点暴露给外部 AI 客户端（Claude Desktop、Cursor 等）。",
-        "settings.mcp.enable" to "启用 MCP Server",
-        "settings.mcp.port" to "端口:",
-        "settings.mcp.port.comment" to "(1-65535，默认: 8080)",
-        "settings.mcp.auto_start" to "IDE 启动时自动启动",
-        "settings.mcp.status" to "状态",
-        "settings.mcp.status.running" to "状态: 运行中",
-        "settings.mcp.status.stopped" to "状态: 已停止",
-        "settings.mcp.start" to "启动服务",
-        "settings.mcp.stop" to "停止服务",
-        "settings.mcp.refresh" to "刷新",
-        "settings.mcp.sessions" to "连接数:",
-        "settings.mcp.tools" to "工具数:",
-
-        // ── ExternalMcpSettingsPanel / External MCP ──
-        "settings.mcp.external" to "外部 MCP",
-        "settings.mcp.external.title" to "外部 MCP 服务器",
-        "settings.mcp.external.desc" to "连接外部 MCP 服务器，为 Agent 模式提供额外工具。工具名自动添加服务器前缀，如 <code>stripe_get_balance</code>。",
-        "settings.mcp.external.add" to "+ 添加 MCP 服务器",
-        "settings.mcp.external.name" to "名称:",
-        "settings.mcp.external.type" to "类型:",
-        "settings.mcp.external.url" to "URL/命令:",
-        "settings.mcp.external.args" to "参数:",
-        "settings.mcp.external.auto_start" to "启动时自动连接",
-        "settings.mcp.external.connected" to "● 已连接",
-        "settings.mcp.external.disconnected" to "○ 未连接",
-        "settings.mcp.external.connect" to "连接",
-        "settings.mcp.external.disconnect" to "断开",
-        "settings.mcp.external.edit" to "编辑",
-        "settings.mcp.external.remove" to "移除",
-        "settings.mcp.external.test_save" to "测试并保存",
-        "settings.mcp.external.cancel" to "取消",
-        "settings.mcp.external.save" to "保存",
-        "settings.mcp.external.refresh_tools" to "刷新工具",
-        "settings.mcp.external.empty" to "尚未配置外部 MCP 服务器。点击「+ 添加 MCP 服务器」开始添加。",
-        "settings.mcp.external.add_title" to "添加 MCP 服务器",
-        "settings.mcp.external.edit_title" to "编辑 MCP 服务器",
-        "settings.mcp.external.tools" to "工具:",
-
-        // ── ApiConfigPanel ──
-        "api.group.title" to "API Configuration (API 设置)",
-        "api.provider" to "API Provider:",
-        "api.provider.comment" to "deepseek = DeepSeek API, agnes = Agnes 2.5 Flash, nvidia = NVIDIA NIM, openrouter = OpenRouter, zhipu = BigModel, anthropic = Claude (Anthropic), codex = Codex (OpenAI)",
-        "api.deepseek.group" to "DeepSeek",
-        "api.deepseek.key" to "API Key:",
-        "api.deepseek.model" to "Model:",
-        "api.deepseek.model.comment" to "deepseek-v4-flash or deepseek-v4-pro",
-        "api.deepseek.max.tokens" to "Max Tokens:",
-        "api.deepseek.temperature" to "Temperature:",
-        "api.deepseek.temperature.comment" to "0.0 - 2.0",
-        "api.agnes.group" to "Agnes",
-        "api.agnes.key" to "API Key:",
-        "api.agnes.model" to "Model:",
-        "api.agnes.model.comment" to "agnes-2.5-flash",
-        "api.agnes.base.url" to "Base URL:",
-        "api.nvidia.group" to "NVIDIA Model",
-        "api.nvidia.key" to "API Key:",
-        "api.nvidia.model" to "Model:",
-        "api.nvidia.base.url" to "Base URL:",
-        "api.openrouter.group" to "OpenRouter",
-        "api.openrouter.key" to "API Key:",
-        "api.openrouter.model" to "Model:",
-        "api.openrouter.model.comment" to "<a href='https://openrouter.ai/models'>openrouter.ai/models</a>",
-        "api.openrouter.base.url" to "Base URL:",
-        "api.zhipu.group" to "BigModel",
-        "api.zhipu.key" to "API Key:",
-        "api.zhipu.model" to "Model:",
-        "api.zhipu.model.comment" to "glm-4 / glm-4-flash / glm-4v",
-        "api.zhipu.base.url" to "Base URL:",
-
-        // ── Anthropic / Claude ──
-        "api.anthropic.group" to "Claude (Anthropic)",
-        "api.anthropic.key" to "API Key:",
-        "api.anthropic.key.comment" to "留空时自动读取 ANTHROPIC_API_KEY 环境变量或 ~/.claude 配置",
-        "api.anthropic.key.source" to "当前 Key 来源:",
-        "api.anthropic.key.source.settings" to "设置面板",
-        "api.anthropic.key.source.env" to "环境变量 ANTHROPIC_API_KEY",
-        "api.anthropic.key.source.claude-settings" to "~/.claude/settings.json (env.ANTHROPIC_API_KEY)",
-        "api.anthropic.key.source.claude-credentials" to "~/.claude/.credentials.json (OAuth)",
-        "api.anthropic.key.source.none" to "未检测到，请在下方填写",
-        "api.anthropic.model" to "Model:",
-        "api.anthropic.model.comment" to "<a href='https://docs.anthropic.com/en/docs/about-claude/models'>docs.anthropic.com/models</a>",
-        "api.anthropic.base.url" to "Base URL:",
-
-        // FIM 补全能力提示
-        "completion.fim.unsupported.title" to "代码补全不可用",
-        "completion.fim.unsupported.message" to "当前 Provider 不支持 FIM 代码补全（Anthropic 等），请在设置中切换回 DeepSeek 或其他支持补全的 Provider。",
-
-        // ── Codex (OpenAI) ──
-        "api.codex.group" to "Codex (OpenAI)",
-        "api.codex.key" to "API Key:",
-        "api.codex.key.comment" to "留空时自动读取 OPENAI_API_KEY 环境变量或 ~/.codex/auth.json",
-        "api.codex.key.source" to "当前 Key 来源:",
-        "api.codex.key.source.settings" to "设置面板",
-        "api.codex.key.source.env" to "环境变量 OPENAI_API_KEY",
-        "api.codex.key.source.codex-auth" to "~/.codex/auth.json (OPENAI_API_KEY)",
-        "api.codex.key.source.codex-oauth-only" to "检测到 Codex OAuth 登录（ChatGPT 账号），但 OAuth 凭据无法用于 OpenAI API，请使用 API Key 登录 codex 或设置 OPENAI_API_KEY",
-        "api.codex.key.source.none" to "未检测到，请在下方填写",
-        "api.codex.model" to "Model:",
-        "api.codex.model.comment" to "留空时自动读取 ~/.codex/config.toml 的 model 配置",
-        "api.codex.base.url" to "Base URL:",
-
-        // ── Claude / Codex 独立配置页 ──
-        "cc.claude.group" to "Claude (Anthropic)",
-        "cc.claude.use.local" to "本地配置:",
-        "cc.claude.use.settings.json" to "使用本地 settings.json",
-        "cc.claude.use.local.comment" to "显式授权读取 ~/.claude/settings.json 的 env.ANTHROPIC_API_KEY / env.ANTHROPIC_AUTH_TOKEN（及 ANTHROPIC_BASE_URL）",
-        "cc.claude.key" to "API Key:",
-        "cc.claude.key.comment" to "留空时使用 ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN 环境变量",
-        "cc.claude.model" to "Model:",
-        "cc.claude.base.url" to "Base URL:",
-        "cc.claude.use.title" to "Claude 本地配置",
-        "cc.claude.use.success" to "已从 ~/.claude/settings.json 读取配置并填入设置",
-        "cc.claude.use.not.found" to "~/.claude/settings.json 中未找到 env.ANTHROPIC_API_KEY 或 env.ANTHROPIC_AUTH_TOKEN，请先在 Claude Code 中配置后重试，或手动填写",
-
-        // ── Codex 独立配置页 ──
-        "cc.codex.group" to "Codex (OpenAI)",
-        "cc.codex.use.local" to "本地配置:",
-        "cc.codex.use.local.config" to "使用本地配置信息",
-        "cc.codex.use.local.comment" to "显式授权读取 ~/.codex/config.toml（模型与代理 Base URL）与 ~/.codex/auth.json（OPENAI_API_KEY / CODEX_API_KEY）",
-        "cc.codex.key" to "API Key:",
-        "cc.codex.key.comment" to "留空时使用 OPENAI_API_KEY / CODEX_API_KEY 环境变量",
-        "cc.codex.model" to "Model:",
-        "cc.codex.base.url" to "Base URL:",
-        "cc.codex.use.title" to "Codex 本地配置",
-        "cc.codex.use.success" to "已从 ~/.codex 读取配置并填入设置",
-        "cc.codex.use.not.found" to "~/.codex/auth.json 中未找到 OPENAI_API_KEY 或 CODEX_API_KEY，请先用 API Key 登录 codex CLI 后重试，或手动填写",
-        "cc.codex.use.oauth.only" to "检测到 Codex 为 OAuth 登录（ChatGPT 账号），但 OAuth 凭据无法用于 OpenAI API，请使用 API Key 登录 codex 或设置 OPENAI_API_KEY",
-        "cc.codex.reasoning.effort" to "Q&A 推理强度:",
-        "cc.codex.reasoning.effort.comment" to "仅用于 Codex Responses API；复杂问题可选择 high",
-
-        // ── CLI Agent（第四模式）──
-        "cli.mode.group" to "CLI Agent (Claude/Codex)",
-        "cli.mode.permission.label" to "CLI Agent 权限模式:",
-        "cli.mode.permission.acceptEdits" to "仅文件编辑（推荐）",
-        "cli.mode.permission.bypass" to "跳过全部权限（危险）",
-        "cli.mode.permission.plan" to "仅计划（不修改文件）",
-        "cli.mode.permission.comment" to "Claude/Codex CLI 修改代码时的权限策略；「跳过全部权限」会允许 CLI 执行任意命令",
-        "cli.mode.requires.provider" to "请先在设置中将 API Provider 切换为 Claude (Anthropic) 或 Codex，再使用此模式",
-        "cli.mode.not.found" to "未找到 %s CLI，请先安装：npm install -g @anthropic-ai/claude-code（Claude）或 npm install -g @openai/codex（Codex）",
-        "cli.mode.change.title" to "%s CLI 执行变更",
-        "cli.mode.change.recorded" to "已记录 %s 个文件变更，可在「变更管理」面板查看/回滚",
-
-        // ── AgentPipelinePanel ──
-        "pipeline.group.title" to "Agent Pipeline (Agent 流水线配置)",
-        "pipeline.phase0.provider" to "Phase 0 意图确认 Provider:",
-        "pipeline.phase0.model" to "Phase 0 意图确认 Model:",
-        "pipeline.phase0.model.comment" to "Default: agnes-2.5-flash",
-        "pipeline.phase0.enabled" to "启用 Phase 0 意图确认",
-        "pipeline.phase1.provider" to "Phase 1 规划 Provider:",
-        "pipeline.phase1.model" to "Phase 1 规划 Model:",
-        "pipeline.phase1.model.comment" to "Default: deepseek-v4-pro",
-        "pipeline.phase1.enabled" to "启用 Phase 1 规划",
-        "pipeline.phase2.provider" to "Phase 2 编码 Provider:",
-        "pipeline.phase2.model" to "Phase 2 编码 Model:",
-        "pipeline.phase2.model.comment" to "Default: deepseek-v4-flash",
-        "pipeline.phase3.provider" to "Phase 3 审查 Provider:",
-        "pipeline.phase3.model" to "Phase 3 审查 Model:",
-        "pipeline.phase3.model.comment" to "Default: agnes-2.5-flash",
-        "pipeline.phase3.enabled" to "启用 Phase 3 审查",
-        "pipeline.comment" to "Each phase can use a different Provider+Model. The API Key comes from the selected Provider's configuration above.",
-        "pipeline.view.models" to "View Models / 查看模型",
-
-        // ── CodeCompletionPanel ──
-        "completion.group.title" to "Code Completion (代码补全)",
-        "completion.enable" to "Enable AI code completion",
-        "completion.model" to "Completion Model:",
-        "completion.model.comment" to "Leave empty to use main model above. Try: deepseek-v4-flash",
-        "completion.max.tokens" to "Max Completion Tokens:",
-        "completion.max.tokens.comment" to "Max tokens per completion suggestion",
-        "completion.min.prefix" to "Min Prefix Chars:",
-        "completion.min.prefix.comment" to "Minimum characters typed before triggering completion (default: 2)",
-        "completion.max.context" to "Max Context Lines:",
-        "completion.max.context.comment" to "Lines of surrounding code sent to the model for context",
-        "completion.debounce" to "Debounce Delay (ms):",
-        "completion.annotation" to "Annotation-aware completion (analyze @Data, @Service, @Entity, etc.)",
-        "completion.annotation.comment" to "Automatically suggests synthetic methods (Lombok), code patterns (Spring/JPA), and annotation names",
-        "completion.comment" to "Comment-aware completion (analyze // getter, // singleton, // TODO, etc.)",
-        "completion.comment.comment" to "Generates code based on natural language comments: // getter for name, // save, // singleton pattern, etc.",
-        "completion.cache" to "Enable result cache (LRU)",
-        "completion.cache.comment" to "Cache AI completion results to avoid redundant API calls (default: enabled, 20 entries)",
-        "completion.statusbar" to "Show status bar indicator",
-        "completion.statusbar.comment" to "Display completion status (IDLE/GENERATING/ERROR) in the status bar",
-        "completion.ghost" to "Ghost Text rendering mode (experimental)",
-        "completion.ghost.comment" to "Render completions as ghost text inline instead of Lookup list. Requires Tab handler to accept.",
-
-        // ── CodeSearchPanel ──
-        "search.group.title" to "Agentic Search (代码搜索)",
-        "search.enable" to "Enable Agentic Search (as an alternative to RAG for code retrieval)",
-        "search.enable.comment" to "Once enabled, code search uses grep/glob/read tools instead of BM25 vector retrieval, making results more accurate and real-time.",
-        "search.rounds" to "Maximum search rounds:",
-        "search.rounds.comment" to "1 = Single-round mode (fast), 2~5 = Multi-round mode (the model can iterate and search on its own, more accurate but a bit slower)",
-        "search.comment1" to "Agentic Search lets models 'search \u2192 read \u2192 judge \u2192 then search again' like human programmers, making it great for situations where you need precise code matching.",
-        "search.comment2" to "RAG is still used for document text retrieval (.md/.txt, etc.), and the two complement each other.",
-
-        // ── ImageParsingPanel ──
-        "image.group.title" to "Image Parsing (图像解析)",
-        "image.model" to "Image Parsing Model:",
-        "image.model.comment" to "Select the model used for parsing images in chat",
-        "image.stepfun.key" to "StepFun API Key:",
-        "image.agnes.comment" to "Agnes reuses the API key configured in the API Configuration section above.",
-        "image.model.agnes" to "Agnes Image 2.1 Flash",
-        "image.model.stepfun" to "StepFun",
-
-        // ── SkillSettingsPanel ──
-        "skill.title" to "\u2699 技能设置",
-        "skill.back" to "返回对话",
-        "skill.community.hint" to "<html>没有合适的 Skill？试试社区 Skill 库 \u2192https://github.com/lvesDi005/useful-skill",
-        "skill.drop.hint" to "将文件拖拽至此处上传，或点击下方按钮选择文件",
-        "skill.upload" to "\uD83D\uDCC4 上传技能文件",
-        "skill.choose.title" to "选择技能文件",
-        "skill.file.filter" to "技能文件 (*.md, *.txt, *.yaml, *.yml, *.json)",
-        "skill.empty" to "暂无技能文件，请上传 Markdown/文本文件作为 AI 技能约束。",
-        "skill.preview" to "查看内容",
-        "skill.delete" to "删除技能",
-        "skill.delete.confirm" to "确定删除技能",
-        "skill.delete.title" to "删除技能",
-        "skill.delete.yes" to "删除",
-        "skill.delete.no" to "取消",
-        "skill.duplicate.warning" to "技能 已存在，请先删除或重命名文件后再上传。",
-        "skill.duplicate.title" to "重复技能",
-        "skill.read.error" to "无法读取文件",
-        "skill.read.error.title" to "读取失败",
-        "skill.empty.file" to "文件内容为空。",
-        "skill.empty.file.title" to "空文件",
-        "skill.tag.editor.message" to "请为技能「%s」添加标签（逗号分隔），\n标签用于在对话中自动匹配相关技能。\n例如：java, spring, mybatis, config",
-        "skill.tag.editor.title" to "编辑标签 — %s",
-        "skill.file.unsupported" to "文件「%s」類型不支援，僅允許 %s",
-        "skill.file.unsupported.title" to "不支援的文件類型",
-        "skill.file.too.large" to "文件「%s」大小為 %dKB，超過 50KB 限制",
-        "skill.file.too.large.title" to "文件過大",
-
-        // ── ChangeManagement ──
-        "change.title" to "\uD83D\uDCCB 变更管理",
-        "change.back" to "返回对话",
-        "change.rollback" to "回滚本条记录",
-        "change.delete" to "删除本条记录",
-        "change.view" to "查看变更",
-        "change.rollback.file" to "回滚此文件",
-        "change.empty" to "暂无变更记录",
-        "change.expand" to "\u25B6",
-        "change.collapse" to "\u25BC",
-        "change.file.icon" to "\u2728",
-        "change.file.icon.default" to "\uD83D\uDCC4",
-        "change.confirm.rollback" to "确认回滚",
-        "change.confirm.rollback.all" to "回滚全部",
-        "change.delete.record" to "删除记录",
-        "change.result.success" to "\u2705 已成功回滚",
-        "change.result.partial" to "\u26A0\uFE0F 部分回滚完成",
-        "change.result.failed" to "\u274C 回滚失败",
-        "change.diff.title" to "变更对比",
-        "change.diff.new.file" to "(新建文件)",
-        "change.diff.backup" to "备份版本",
-        "change.diff.current" to "当前版本",
-        "change.rollback.dialog.title" to "确认回滚",
-        "change.delete.dialog.title" to "删除记录",
-
-        // ── CodeDiffUtil ──
-        "diff.no.change" to "生成的代码与原始代码相同，无需变更。",
-        "diff.no.change.title" to "无变更",
-        "diff.preview.title" to "预览代码变更",
-        "diff.apply" to "应用更改",
-        "diff.original" to "原始代码",
-        "diff.generated" to "生成的代码",
-        "diff.batch.title" to "变更预览（{0} 个文件）",
-        "diff.batch.execute" to "执行所有变更",
-        "diff.batch.expand" to "▶ 查看变更",
-        "diff.batch.collapse" to "▼ 收起",
-        "diff.batch.load" to "加载到文件系统",
-
-        // ── Agent ──
-        "agent.asking" to "Asking DeepSeek...",
-        "agent.explaining" to "Explaining Code...",
-        "agent.generating" to "Generating Code...",
-        "agent.reviewing" to "Reviewing Code...",
-        "agent.optimizing" to "Optimizing Code...",
-        "agent.select.code.ask" to "Select code or open a file to ask questions about it.",
-        "agent.select.code.explain" to "Select code to explain.",
-        "agent.select.code.generate" to "Select code or describe what to generate.",
-        "agent.select.code.review" to "Select code to review.",
-        "agent.select.code.optimize" to "Select code to optimize.",
-        "agent.calling" to "正在分析代码...",
-        "agent.config.required" to "请在设置中配置您的 API Key...",
-        "agent.config.title" to "需要 API Key",
-        "agent.api.error" to "API 错误",
-        "agent.title" to "AI Agent",
-        "agent.menu.setlang" to "设置语言",
-        "agent.menu.explain" to "解释代码",
-        "agent.menu.review" to "审查代码",
-        "agent.menu.upload" to "上传到聊天",
-
-        // ── TranslateDialog ──
-        "translate.title" to "翻译",
-        "translate.button" to "翻  译",
-        "translate.placeholder.source" to "输入文本",
-        "translate.placeholder.target" to "翻译",
-        "translate.progress" to "翻译中...",
-        "translate.error" to "翻译失败",
-        "translate.no.key" to "请在设置中配置 Agnes API Key",
-        "translate.swap" to "互换语言",
-        "lang.zh" to "中文",
-        "lang.en" to "English",
-        "lang.ja" to "日本語",
-        "lang.ko" to "한국어",
-        "lang.fr" to "Français",
-        "lang.de" to "Deutsch",
-        "lang.es" to "Español",
-        "lang.pt" to "Português",
-        "lang.ru" to "Русский",
-        "lang.th" to "ไทย",
-
-        // ── ChangelogDialog ──
-        "changelog.title.zh" to "DeepSeek AI CodeHelper — 更新记录",
-        "changelog.title.en" to "DeepSeek AI CodeHelper — Release Notes",
-        "changelog.header.zh" to "\uD83D\uDE80 DeepSeek AI CodeHelper 更新",
-        "changelog.header.en" to "\uD83D\uDE80 DeepSeek AI CodeHelper Update",
-        "changelog.version.zh" to "当前版本",
-        "changelog.version.en" to "Current version",
-        "changelog.setup.zh" to "\u2699 点击这里配置 API Key",
-        "changelog.setup.en" to "\u2699 Click here to configure API Key",
-        "changelog.ok.zh" to "知道了",
-        "changelog.ok.en" to "Got it",
-
-        // ── Misc ──
-        "lang.label" to "语言 / Language",
-        // "lang.agent.label" 已合并到 lang.label
-        "selected.code.remove" to "移除选中代码引用",
-        "file.remove" to "移除",
-        "code.copy" to "复制代码",
-        "code.insert" to "插入到光标位置",
-        // ── 公告横幅 ──
-        "announcement.content" to "欢迎使用 DeepSeek AI CodeHelper！如有问题或建议，请在 GitHub 提交 Issue。寻找小伙伴共创，一起为爱发电！",
-        "announcement.content.link" to "https://github.com/lvesDi005/DeepSeek-AI-CodeHelper",
-        "announcement.dismiss" to "关闭",
-    )
-
-    // ════════════════════════════════════════════════════════════
-    //  英文映射表
+    //  English string map
     // ════════════════════════════════════════════════════════════
     private val en = mapOf(
         "chat.send" to "Send",
@@ -572,6 +76,7 @@ object I18n {
         "chat.load.more" to "\u25B2 Load earlier messages",
         "chat.analysis.complete" to "\u2705 Context analysis complete",
         "chat.analysis.failed" to "Context analysis failed",
+        "chat.analysis.scanning" to "\uD83D\uDD0D Scanning project context",
         "chat.yes.this.is.what.i.mean" to "\u2705 Yes, that's what I mean",
         "chat.no.i.need.to.supplement" to "\u274C No, I need to add more",
         "chat.tooltip.send" to "Send message",
@@ -582,6 +87,12 @@ object I18n {
         "chat.mode.agent" to "Agent",
         "chat.streaming.toggle" to "Streaming Output",
         "chat.thinking.toggle" to "Show Reasoning",
+        "chat.thinking" to "Thinking",
+        "chat.step.analyzing" to "Analyzing your request...",
+        "chat.step.searching" to "Searching the codebase...",
+        "chat.step.reasoning" to "Reasoning through the solution...",
+        "chat.step.generating" to "Generating code...",
+        "chat.step.refining" to "Refining the response...",
         "chat.output.speed" to "Output Speed",
         "chat.output.speed.fastest" to "Fastest",
         "chat.output.speed.fast" to "Fast",
@@ -621,9 +132,17 @@ object I18n {
         "chat.file.context" to "Below is the content of file...",
         "chat.image.context" to "Below is the parsed result of image...",
         "chat.agent.error" to "\u274C Agent execution failed",
-        "chat.agent.progress" to "DeepSeek AI",
+        "chat.agent.progress" to "DeepSeek-AI-Helper",
         "chat.agent.interprets" to "🤖 Analysis result:",
         "chat.agent.single.file" to "📝 Simple task, skipping planning & review, entering coding",
+        "chat.agent.understanding" to "🤔 Understanding your request...",
+        "chat.agent.cancelled" to "✋ Cancelled",
+        "chat.agent.planning.prefix" to "📋 Planning with ",
+        "chat.agent.planning.suffix" to "...",
+        "chat.agent.coding.prefix" to "🛠 Implementing with ",
+        "chat.agent.coding.suffix" to "...",
+        "chat.agent.reviewing.prefix" to "🔎 Reviewing with ",
+        "chat.agent.reviewing.suffix" to "...",
         "chat.upload" to "Upload File",
         "attachment.filter" to "Supported formats (code, text, PDF, Word, Excel, PowerPoint, images)",
         "attachment.not.file" to "Attachment does not exist or is not a file: %s",
@@ -663,7 +182,7 @@ object I18n {
 
         "input.drag.resize" to "Drag to resize input area, double-click to reset",
 
-        "welcome.title" to "DeepSeek AI CodeHelper",
+        "welcome.title" to "DeepSeek-AI-Helper",
         "welcome.subtitle" to "AI-powered coding assistant for JETBRAINS",
         "welcome.quickstart" to "Quick Start",
         "welcome.tip.send" to "\uD83D\uDCAC Enter to send message",
@@ -681,8 +200,8 @@ object I18n {
         "history.messages" to "messages",
         "history.tokens" to "tokens",
 
-        "bubble.me" to "me",
-        "bubble.dp.helper" to "DP Helper",
+        "bubble.me" to "You",
+        "bubble.dp.helper" to "DeepSeek",
         "bubble.thinking" to "Thinking...",
         "bubble.reasoning" to "Reasoning",
         "bubble.reasoning.word.count" to "{0} chars",
@@ -972,10 +491,10 @@ object I18n {
         "lang.ru" to "Russian",
         "lang.th" to "Thai",
 
-        "changelog.title.zh" to "DeepSeek AI CodeHelper — Release Notes",
-        "changelog.title.en" to "DeepSeek AI CodeHelper — Release Notes",
-        "changelog.header.zh" to "\uD83D\uDE80 DeepSeek AI CodeHelper Update",
-        "changelog.header.en" to "\uD83D\uDE80 DeepSeek AI CodeHelper Update",
+        "changelog.title.zh" to "DeepSeek-AI-Helper — Release Notes",
+        "changelog.title.en" to "DeepSeek-AI-Helper — Release Notes",
+        "changelog.header.zh" to "\uD83D\uDE80 DeepSeek-AI-Helper Update",
+        "changelog.header.en" to "\uD83D\uDE80 DeepSeek-AI-Helper Update",
         "changelog.version.zh" to "Current version",
         "changelog.version.en" to "Current version",
         "changelog.setup.zh" to "\u2699 Click here to configure API Key",
@@ -990,7 +509,7 @@ object I18n {
         "code.copy" to "Copy Code",
         "code.insert" to "Insert at Cursor",
         // ── Announcement banner ──
-        "announcement.content" to "Welcome to DeepSeek AI CodeHelper! For issues or suggestions, please submit on GitHub.Seeking collaborators to co-build this project with passion—we contribute purely out of love for the cause.",
+        "announcement.content" to "Welcome to DeepSeek-AI-Helper! For issues or suggestions, please submit on GitHub.Seeking collaborators to co-build this project with passion—we contribute purely out of love for the cause.",
         "announcement.content.link" to "https://github.com/lvesDi005/DeepSeek-AI-CodeHelper",
         "announcement.dismiss" to "Dismiss",
 

@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DeepSeek Chat - 暗色界面</title>
+<title>DeepSeek Chat - Dark UI</title>
 <style>
-  /* ===== 全局重置 ===== */
+  /* ===== Global reset ===== */
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     background: #1a1a1e;
@@ -17,7 +17,7 @@
     padding: 40px;
   }
 
-  /* ===== 截图容器 ===== */
+  /* ===== Screenshot container ===== */
   .screenshot {
     width: 820px;
     background: #1e1e22;
@@ -30,7 +30,7 @@
     position: relative;
   }
 
-  /* ===== 窗口标题栏 ===== */
+  /* ===== Window title bar ===== */
   .window-bar {
     display: flex;
     align-items: center;
@@ -57,7 +57,7 @@
     letter-spacing: 0.3px;
   }
 
-  /* ===== 聊天区域 ===== */
+  /* ===== Chat area ===== */
   .chat-area {
     padding: 24px 28px 20px;
     display: flex;
@@ -65,7 +65,7 @@
     gap: 20px;
   }
 
-  /* ===== 消息卡片通用 ===== */
+  /* ===== Message card (shared) ===== */
   .message {
     border-radius: 10px;
     overflow: hidden;
@@ -74,14 +74,14 @@
       inset 0 -1px 0 rgba(0,0,0,0.15);
   }
 
-  /* ===== 用户消息卡片 ===== */
+  /* ===== User message card ===== */
   .message-user {
     background: #25252b;
     border: 1px solid rgba(255,255,255,0.06);
     align-self: flex-end;
   }
 
-  /* ===== 用户头部：头像 + 时间操作区 ===== */
+  /* ===== User header: avatar + time/actions area ===== */
   .user-header {
     display: flex;
     align-items: center;
@@ -130,7 +130,7 @@
     color: rgba(255,255,255,0.5);
   }
 
-  /* ===== 代码文件标签行 ===== */
+  /* ===== Code file tab row ===== */
   .file-tab-row {
     display: flex;
     align-items: center;
@@ -153,7 +153,7 @@
     line-height: 1;
   }
 
-  /* ===== 用户消息正文 ===== */
+  /* ===== User message body ===== */
   .user-body {
     padding: 4px 16px 18px 58px;
   }
@@ -170,14 +170,14 @@
     letter-spacing: 0.01em;
   }
 
-  /* ===== AI 回复卡片 ===== */
+  /* ===== AI reply card ===== */
   .message-ai {
     background: #1f1f25;
     border: 1px solid rgba(255,255,255,0.05);
     align-self: flex-start;
   }
 
-  /* ===== AI 头部 ===== */
+  /* ===== AI header ===== */
   .ai-header {
     display: flex;
     align-items: center;
@@ -207,7 +207,7 @@
     letter-spacing: 0.3px;
   }
 
-  /* ===== AI 回复正文 ===== */
+  /* ===== AI reply body ===== */
   .ai-body {
     padding: 6px 16px 18px 54px;
   }
@@ -253,7 +253,7 @@
     color: rgba(255,255,255,0.7);
   }
 
-  /* ===== 底部提示文字 ===== */
+  /* ===== Footer hint text ===== */
   .footer-hint {
     text-align: center;
     padding: 6px 0 2px;
@@ -267,33 +267,33 @@
 
 <div class="screenshot">
 
-  <!-- 窗口标题栏 -->
+  <!-- Window title bar -->
   <div class="window-bar">
     <div class="window-dots">
       <div class="window-dot dot-red"></div>
       <div class="window-dot dot-yellow"></div>
       <div class="window-dot dot-green"></div>
     </div>
-    <div class="window-title">DeepSeek Chat · 暗色主题</div>
+    <div class="window-title">DeepSeek Chat · Dark Theme</div>
   </div>
 
-  <!-- 聊天区域 -->
+  <!-- Chat area -->
   <div class="chat-area">
 
-    <!-- ===== 用户消息 ===== -->
+    <!-- ===== User message ===== -->
     <div class="message message-user">
-      <!-- 头部：头像 + 时间 + 删除 -->
+      <!-- Header: avatar + time + delete -->
       <div class="user-header">
         <div class="user-avatar-row">
           <div class="user-avatar"><span>n</span></div>
           <div class="user-time">14:32</div>
         </div>
         <div class="user-meta">
-          <div class="user-delete" title="删除此消息">&#x1F5D1;</div>
+          <div class="user-delete" title="Delete this message">&#x1F5D1;</div>
         </div>
       </div>
 
-      <!-- 代码文件标签 -->
+      <!-- Code file tabs -->
       <div class="file-tab-row">
         <div class="file-tab">
           <span class="coffee-icon">&#x2615;</span>
@@ -305,19 +305,19 @@
         </div>
       </div>
 
-      <!-- 正文 -->
+      <!-- Body -->
       <div class="user-body">
         <div class="divider"></div>
         <div class="text">
-          这个布局在移动端会溢出，建议用 flex-wrap 或者 grid 做响应式改版。<br>
-          另外侧边栏在 768px 以下应该默认收起。
+          This layout overflows on mobile. I recommend using flex-wrap or grid for a responsive redesign.<br>
+          Also, the sidebar should collapse by default below 768px.
         </div>
       </div>
     </div>
 
-    <!-- ===== AI 回复 ===== -->
+    <!-- ===== AI reply ===== -->
     <div class="message message-ai">
-      <!-- 头部 -->
+      <!-- Header -->
       <div class="ai-header">
         <div class="ai-icon">
           <div class="ai-icon-inner"></div>
@@ -325,10 +325,10 @@
         <span class="ai-name">DP Helper</span>
       </div>
 
-      <!-- 正文 -->
+      <!-- Body -->
       <div class="ai-body">
         <div class="text">
-          好的，我来帮你优化这个布局。以下是建议方案：
+          Sure, I'll help you optimize this layout. Here's my suggested approach:
         </div>
 
         <div class="code-block">
@@ -349,13 +349,13 @@
         </div>
 
         <div class="text" style="margin-top: 10px;">
-          同时在 <span style="color:rgba(255,255,255,0.4);">App.jsx</span> 中添加一个 toggle 状态来控制侧边栏的显隐。<br>
-          需要我把完整代码发出来吗？
+          Also add a toggle state in <span style="color:rgba(255,255,255,0.4);">App.jsx</span> to control the sidebar's visibility.<br>
+          Want me to send the full code?
         </div>
       </div>
     </div>
 
-    <div class="footer-hint">↓ 继续滚动查看更早消息</div>
+    <div class="footer-hint">↓ Scroll to view earlier messages</div>
 
   </div>
 </div>

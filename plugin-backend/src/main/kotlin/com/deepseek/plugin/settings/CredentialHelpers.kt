@@ -8,8 +8,8 @@ import java.io.File
 private fun claudeDir(): File = File(System.getProperty("user.home"), ".claude")
 
 /**
- * 读取 ~/.claude/settings.json 的 env 中的 Claude 凭据（供「使用本地 settings.json」按钮调用）。
- * 优先 env.ANTHROPIC_API_KEY，其次 env.ANTHROPIC_AUTH_TOKEN。
+ * Reads Claude credentials from the env in ~/.claude/settings.json (invoked by the "Use local settings.json" button).
+ * Prefers env.ANTHROPIC_API_KEY, then env.ANTHROPIC_AUTH_TOKEN.
  */
 fun readClaudeSettingsEnvKey(): String? {
     return try {
@@ -23,7 +23,7 @@ fun readClaudeSettingsEnvKey(): String? {
     }
 }
 
-/** 读取 ~/.claude/settings.json 的 env.ANTHROPIC_BASE_URL（供按钮调用，可为 null） */
+/** Reads env.ANTHROPIC_BASE_URL from ~/.claude/settings.json (invoked by the button; may be null) */
 fun readClaudeSettingsBaseUrl(): String? {
     return try {
         val f = File(claudeDir(), "settings.json")
@@ -37,9 +37,9 @@ fun readClaudeSettingsBaseUrl(): String? {
 }
 
 /**
- * 读取 ~/.claude/settings.json env 中的 Claude 模型映射（cc-switch / Claude Code 约定）：
- *  ANTHROPIC_DEFAULT_SONNET_MODEL / ANTHROPIC_DEFAULT_HAIKU_MODEL / ANTHROPIC_DEFAULT_OPUS_MODEL。
- * 返回 { "sonnet" -> "...", "haiku" -> "...", "opus" -> "..." }，缺失的键不包含。
+ * Reads the Claude model mapping from env in ~/.claude/settings.json (cc-switch / Claude Code conventions):
+ *  ANTHROPIC_DEFAULT_SONNET_MODEL / ANTHROPIC_DEFAULT_HAIKU_MODEL / ANTHROPIC_DEFAULT_OPUS_MODEL.
+ * Returns { "sonnet" -> "...", "haiku" -> "...", "opus" -> "..." }; missing keys are omitted.
  */
 fun readClaudeModelMapping(): Map<String, String> {
     return try {
@@ -65,8 +65,8 @@ private fun codexDir(): File =
         ?: File(System.getProperty("user.home"), ".codex")
 
 /**
- * 读取 ~/.codex/auth.json 的 API key（供「使用本地配置信息」按钮调用）。
- * 优先 OPENAI_API_KEY（官方 codex login），其次 CODEX_API_KEY（cc-switch / 自定义 model_provider 约定）。
+ * Reads the API key from ~/.codex/auth.json (invoked by the "Use local config" button).
+ * Prefers OPENAI_API_KEY (official codex login), then CODEX_API_KEY (cc-switch / custom model_provider conventions).
  */
 fun readCodexAuthApiKey(): String? {
     return try {
@@ -80,7 +80,7 @@ fun readCodexAuthApiKey(): String? {
     }
 }
 
-/** 检测 ~/.codex/auth.json 是否仅包含 OAuth 登录态（无可用 API key，供按钮提示） */
+/** Detects whether ~/.codex/auth.json contains only an OAuth login state (no usable API key; used for button hints) */
 fun readCodexAuthHasOAuthOnly(): Boolean {
     return try {
         val f = File(codexDir(), "auth.json")
@@ -94,7 +94,7 @@ fun readCodexAuthHasOAuthOnly(): Boolean {
     }
 }
 
-/** 读取 ~/.codex/config.toml 的 model = "..."（Codex CLI 当前使用的模型，供按钮/默认值调用） */
+/** Reads model = "..." from ~/.codex/config.toml (the model currently used by Codex CLI, invoked by buttons/defaults) */
 fun readCodexConfigModel(): String? {
     return try {
         val f = File(codexDir(), "config.toml")
@@ -107,8 +107,8 @@ fun readCodexConfigModel(): String? {
 }
 
 /**
- * 读取 ~/.codex/config.toml 当前选中 model_provider 段的 base_url（cc-switch 代理场景）。
- * 例如 [model_providers.中转名] 内的 base_url = "https://..."。
+ * Reads the base_url of the currently selected model_provider section in ~/.codex/config.toml (cc-switch proxy scenarios).
+ * For example, base_url = "https://..." inside [model_providers.<relay name>].
  */
 fun readCodexConfigBaseUrl(): String? {
     return try {

@@ -11,35 +11,35 @@ import java.awt.font.FontRenderContext
 import java.awt.geom.AffineTransform
 
 /**
- * Ghost Text 渲染器。
+ * Ghost Text renderer.
  *
- * 在编辑器光标位置以灰色半透明文本绘制补全建议。
- * 支持多行补全，第一行作为 inline inlay 紧跟在光标后，
- * 后续行作为 block inlay 显示在光标行下方。
+ * Draws the completion suggestion as gray, semi-transparent text at the caret position.
+ * Supports multi-line completion: the first line appears as an inline inlay immediately after the caret,
+ * and subsequent lines appear as a block inlay below the caret line.
  *
- * 使用 [EditorCustomElementRenderer] 接口控制绘制。
+ * Drawing is controlled via the [EditorCustomElementRenderer] interface.
  */
 class GhostTextRenderer(
     private val text: String,
-    /** 补全文本中已被编辑器自身占用的宽度（像素），用于偏移 inline 元素 */
+    /** Width (in pixels) of the completion text already occupied by the editor itself, used to offset the inline element */
     private val offsetX: Int = 0
 ) : com.intellij.openapi.editor.EditorCustomElementRenderer {
 
-    /** 行高缓存 */
+    /** Cached line height */
     private var lineHeight: Int = -1
 
-    /** 字体度量缓存 */
+    /** Cached font metrics */
     private var fontMetrics: java.awt.FontMetrics? = null
 
     override fun calcWidthInPixels(inlay: Inlay<*>): Int {
         val editor = inlay.editor
         val metrics = getFontMetrics(editor)
         if (metrics == null) {
-            // 兜底：每个字符近似 8px
+            // Fallback: approximate 8px per character
             return text.length * 8 + offsetX
         }
         val firstLine = text.lines().firstOrNull() ?: text
-        val width = metrics.stringWidth(firstLine) + offsetX + 4 // +4 留边距
+        val width = metrics.stringWidth(firstLine) + offsetX + 4 // +4 margin
         return maxOf(width, 10)
     }
 
@@ -53,18 +53,18 @@ class GhostTextRenderer(
         val editor = inlay.editor
         val metrics = getFontMetrics(editor) ?: return
 
-        // 半透明灰色 — 经典 Ghost Text 风格
+        // Semi-transparent gray — classic Ghost Text style
         g.color = JBColor(GHOST_COLOR_LIGHT, GHOST_COLOR_DARK)
         g.font = editor.colorsScheme.getFont(EditorFontType.PLAIN)
 
         val lines = text.lines()
         val lineH = getLineHeight(editor)
 
-        // 绘制第一行（inline）
+        // Draw the first line (inline)
         var y = targetRegion.y + metrics.ascent
         g.drawString(lines.first(), targetRegion.x + offsetX, y)
 
-        // 绘制后续行（block — 如果有多行）
+        // Draw subsequent lines (block — if there are multiple lines)
         for (i in 1 until lines.size) {
             y += lineH
             g.drawString(lines[i], targetRegion.x, y)

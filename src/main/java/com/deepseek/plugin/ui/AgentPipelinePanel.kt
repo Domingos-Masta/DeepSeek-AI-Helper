@@ -25,7 +25,7 @@ class AgentPipelinePanel : JPanel(BorderLayout()) {
     private val settings = DeepSeekSettings.instance
     private val providerIds = LlmProviderRegistry.allProviders().map { it.id }.toList()
 
-    // ── Agent Pipeline 4 阶段绑定 ──
+    // ── Agent Pipeline 4-phase binding ──
     private data class PhaseBinding(
         val providerLabelKey: String,
         val modelLabelKey: String,
@@ -43,7 +43,7 @@ class AgentPipelinePanel : JPanel(BorderLayout()) {
     init {
         isOpaque = false
 
-        // 4 阶段的配置元数据（label key + settings 读写 + 可选开关）
+        // Configuration metadata for the 4 phases (label key + settings read/write + optional toggle)
         data class PhaseMeta(
             val labelPrefix: String,
             val providerGet: () -> String,
@@ -78,7 +78,7 @@ class AgentPipelinePanel : JPanel(BorderLayout()) {
 
         val form = panel {
             // ════════════════════════════════════════════════════════════
-            //  Agent Pipeline 4 阶段 — 通过循环动态生成
+            //  Agent Pipeline 4 phases — generated dynamically in a loop
             // ════════════════════════════════════════════════════════════
             group(I18n.tr("pipeline.group.title")) {
                 for (meta in phaseMetas) {
@@ -86,7 +86,7 @@ class AgentPipelinePanel : JPanel(BorderLayout()) {
                     val modelLabelKey = "${meta.labelPrefix}.model"
                     val modelCommentKey = "${meta.labelPrefix}.model.comment"
 
-                    // 启用开关（仅 Phase 0/1/3）
+                    // Enable toggle (Phases 0/1/3 only)
                     if (meta.hasToggle) {
                         val toggleKey = "${meta.labelPrefix}.enabled"
                         row {
@@ -96,7 +96,7 @@ class AgentPipelinePanel : JPanel(BorderLayout()) {
                         }
                     }
 
-                    // Provider 下拉框
+                    // Provider dropdown
                     lateinit var providerCombo: ComboBox<String>
                     row(I18n.tr(providerLabelKey)) {
                         providerCombo = comboBox<String>(providerIds)
@@ -107,7 +107,7 @@ class AgentPipelinePanel : JPanel(BorderLayout()) {
                             .component
                     }
 
-                    // Model 文本输入框
+                    // Model text input field
                     lateinit var modelField: JBTextField
                     row(I18n.tr(modelLabelKey)) {
                         modelField = cell(JBTextField().apply {
@@ -134,7 +134,7 @@ class AgentPipelinePanel : JPanel(BorderLayout()) {
                     ))
                 }
 
-                // 底部说明 + 查看模型按钮
+                // Bottom note + view models button
                 row {
                     comment(I18n.tr("pipeline.comment"))
                 }

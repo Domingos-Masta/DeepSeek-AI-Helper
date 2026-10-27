@@ -207,7 +207,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
         private const val MAX_PHASE0_RETRIES = 1
 
-        /** 当前活动的 ChatPanel 实例，供外部 Action 向聊天面板推送内容 */
+        /** The currently active ChatPanel instance, used by external Actions to push content into the chat panel */
 
         @JvmStatic
 
@@ -243,7 +243,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     private var currentSessionIndex = 0
 
-    /** 线程安全的聊天状态机 — 替代 isStreaming + currentEventSource + streamBuffer + streamingBubble + … */
+    /** Thread-safe chat state machine — replaces isStreaming + currentEventSource + streamBuffer + streamingBubble + … */
 
     internal val chatState = AtomicReference<ChatState>(ChatState.Idle)
 
@@ -251,29 +251,29 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     private var currentMode = ChatMode.Q_A_SCAN
 
-    /** 模式下拉引用（第四模式「Claude/Codex」动态文案用） */
+    /** Mode dropdown reference (used for the dynamic label of the fourth mode "Claude/Codex") */
 
     private var modeDropdown: JComboBox<String>? = null
 
-    /** 下拉文案刷新期间抑制 ActionEvent，避免误切模式 */
+    /** Suppress ActionEvent while the dropdown label is being refreshed, to avoid accidentally switching modes */
 
     private var suppressingModeDropdown = false
 
 
 
-    /** 意图确认阶段的回调 — 非 null 时正在等待用户补充说明 */
+    /** Callback for the intent-confirmation phase — non-null while waiting for the user's additional notes */
 
     internal var pendingConfirmation: ((clarification: String) -> Unit)? = null
 
 
 
-    /** 统一设置页面 — 覆盖整个插件区域，含顶部图标导航栏 */
+    /** Unified settings page — covers the whole plugin area, including the top icon navigation bar */
 
     internal val unifiedSettingsPanel: UnifiedSettingsPanel
 
 
 
-    /** 变更管理面板 — 覆盖整个插件区域 */
+    /** Change management panel — covers the whole plugin area */
 
     private val changeManagementPanel: ChangeManagementPanel
 
@@ -297,7 +297,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-    /** 输入区默认/最小/最大高度 */
+    /** Default / minimum / maximum height of the input area */
 
     private val defaultInputHeight = 160
 
@@ -307,17 +307,17 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-    /** P3: 虚拟化滚动—当前会话中可见的第一条消息索引（从尾部算） */
+    /** P3: virtualized scrolling — index of the first visible message in the current conversation (counted from the end) */
 
     private var visibleStartIndex = 0
 
-    /** P3: 虚拟化滚动—每个批次渲染的最大消息数 */
+    /** P3: virtualized scrolling — maximum number of messages rendered per batch */
 
     private val VISIBLE_BATCH_SIZE = 30
 
 
 
-    /** 防抖保存定时器：500ms 内多次调用只触发一次磁盘写入 */
+    /** Debounced save timer: multiple calls within 500ms trigger only one disk write */
 
     private val saveTimer = Timer(500) {
 
@@ -327,9 +327,18 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-    // ── 思考中动画 ──
+    // ── Thinking animation ──
 
     private val spinnerChars = listOf("◐", "◓", "◑", "◒")
+
+    /** Rotating step messages shown while the model is reasoning / generating. */
+    private val thinkingStepKeys = listOf(
+        "chat.step.analyzing",
+        "chat.step.searching",
+        "chat.step.reasoning",
+        "chat.step.generating",
+        "chat.step.refining"
+    )
 
     private var thinkingTimer: Timer? = null
 
@@ -405,9 +414,9 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-    // ── Streaming state (迁移到 ChatState 状态机) ──
+    // ── Streaming state (migrated to the ChatState state machine) ──
 
-    /** 用于 EDT 上判断是否正在流式 — 由 chatState 驱动 */
+    /** Used on the EDT to determine whether streaming is active — driven by chatState */
 
     private val isStreaming: Boolean
         get() = chatState.get() is ChatState.Streaming || isPreparingAttachments
@@ -428,7 +437,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
         layout = GridBagLayout()
 
-        // 底部留 28px 空间，避免滚动到底时最后一条消息被截断
+        // Leave 28px of space at the bottom so the last message is not clipped when scrolled to the end
 
         border = JBUI.Borders.empty(0, 0, 28, 0)
 
@@ -468,9 +477,9 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     }.also { pane ->
 
-        // ── 自动滚动跟踪：用户滚动离开底部时暂停跟随，回到底部时恢复 ──
-        // 意图捕获统一走 JViewport 的 ChangeListener：滚轮/触控板/拖动/键盘最终都会改变视口位置并触发它；
-        // 程序化的自动滚动（settleOnce）通过 programmaticScrollInProgress 标记排除，不会误判为用户输入。
+        // ── Auto-scroll tracking: pause following when the user scrolls away from the bottom, resume when back at the bottom ──
+        // Intent capture goes through the JViewport ChangeListener: wheel/trackpad/drag/keyboard all ultimately change the viewport position and trigger it;
+        // Programmatic auto-scroll (settleOnce) is excluded via the programmaticScrollInProgress flag, so it is not mistaken for user input.
 
         val updateUserScrollIntent = {
             val vp = pane.viewport
@@ -482,12 +491,12 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
         pane.verticalScrollBar.addMouseListener(object : MouseAdapter() {
             override fun mouseReleased(e: MouseEvent?) {
                 updateUserScrollIntent()
-                // 用户松手后若已回到底部附近：立即恢复跟随并重新定位，避免后续内容滞留在视口下方
+                // If the user is back near the bottom after releasing: resume following immediately and reposition, so subsequent content is not stranded below the viewport
                 if (autoScrollController.followsBottom) scrollToBottom()
             }
         })
 
-        // ── 窗口尺寸变化时：跟随状态下重新布局并复位到底部，避免滚动范围滞后 ──
+        // ── On window resize: when following, re-layout and reset to the bottom so the scroll range does not lag ──
 
         pane.addComponentListener(object : ComponentAdapter() {
             override fun componentResized(e: ComponentEvent?) {
@@ -501,11 +510,11 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     /**
 
-     * AI 流式生成时是否自动滚动到底部。
+     * Whether to auto-scroll to the bottom while the AI is streaming its response.
 
-     * 用户向上滚动查看历史时置 false（暂停跟随），
+     * Set to false when the user scrolls up to view history (pauses following),
 
-     * 用户滚动到底部或发送新消息时置 true（恢复跟随）。
+     * and set to true when the user scrolls to the bottom or sends a new message (resumes following).
 
      */
 
@@ -558,8 +567,8 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
     /**
-     * 语言切换即时刷新：更新发送/停止按钮、欢迎面板等静态文案。
-     * 由 [I18nTopics.LANGUAGE_CHANGED] 事件触发。
+     * Language-switch live refresh: updates static text such as the send/stop buttons and the welcome panel.
+     * Triggered by the [I18nTopics.LANGUAGE_CHANGED] event.
      */
     private fun refreshI18nTexts() {
         try {
@@ -572,15 +581,15 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
     }
 
     /**
-     * 语言切换时遍历组件树，刷新所有通过 [I18n.tooltip] 标记过的悬浮提示文字。
+     * On language switch, walks the component tree and refreshes all tooltip text marked via [I18n.tooltip].
      */
     private fun refreshTooltips() {
         I18n.refreshTooltips(this)
     }
 
     /**
-     * 字体切换即时刷新：遍历消息面板，更新所有已渲染消息正文的字体大小。
-     * 由 [I18nTopics.CONTENT_FONT_CHANGED] 事件触发。
+     * Font-switch live refresh: walks the message panel and updates the font size of all rendered message bodies.
+     * Triggered by the [I18nTopics.CONTENT_FONT_CHANGED] event.
      */
     private fun refreshAllMessageFonts() {
         val size = DeepSeekSettings.instance.contentFontSize
@@ -590,7 +599,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
                     c.font = c.font.deriveFont(Font.PLAIN, size.toFloat())
                 }
                 is javax.swing.JEditorPane -> if (c.contentType.startsWith("text/html")) {
-                    // 需重建 StyleSheet（CSS font-size 优先于 pane.font），否则已生成内容不变化
+                    // The StyleSheet must be rebuilt (CSS font-size takes precedence over pane.font), otherwise the already-generated content does not change
                     MarkdownRenderer.refreshFont(c, size)
                 }
             }
@@ -604,12 +613,12 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
     }
 
     /**
-     * 插件主题切换即时刷新：重新渲染当前会话消息以应用新配色。
-     * 由 [I18nTopics.THEME_CHANGED] 事件触发。
+     * Plugin-theme-switch live refresh: re-renders the current conversation messages to apply the new color scheme.
+     * Triggered by the [I18nTopics.THEME_CHANGED] event.
      */
     private fun refreshThemeColors() {
         try {
-            // 更新消息面板背景（构建时固化，需随主题刷新）
+            // Update the message panel background (fixed at build time; must be refreshed with the theme)
             val msgBg = PluginTheme.color(0xFFFFFF, 0x2B2B2B)
             messagesScrollPane.background = msgBg
             messagesPanel.background = msgBg
@@ -671,7 +680,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
             g2.fillRoundRect(0, 0, width, height, 8, 8)
 
-            // 圆角边框：发送态浅绿、停止态浅红
+            // Rounded border: light green when sending, light red when stopped
 
             g2.color = if (isStop) JBColor(0xEF9A9A, 0xE57373) else JBColor(0xA5D6A7, 0x66BB6A)
 
@@ -689,7 +698,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
             super.setText(text)
 
-            // 根据文本自动切换图标
+            // Auto-switch the icon based on the text
 
             val isStop = text?.contains(I18n.tr("chat.stop.enter").take(2), ignoreCase = true) == true
 
@@ -725,7 +734,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     init {
 
-        // ── 订阅语言/字体/主题切换事件，实现即时刷新 ──
+        // ── Subscribe to language/font/theme switch events for live refresh ──
         project.messageBus.connect(this).apply {
             subscribe(I18nTopics.LANGUAGE_CHANGED, object : LanguageChangeListener {
                 override fun languageChanged() {
@@ -782,11 +791,11 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-        // ── 合并工具栏 + 会话栏为单行 ──
+        // ── Merge the toolbar + conversation bar into a single row ──
 
-        // 左侧：[▼会话1] [+] [🗑清除当前]
+        // Left: [▼ Session 1] [+] [🗑 Clear current]
 
-        // 右侧：[≡历史] [🕐变更管理] [⚙设置]
+        // Right: [≡ History] [🕐 Change management] [⚙ Settings]
 
         val topBar = JPanel(BorderLayout()).apply {
 
@@ -848,7 +857,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-        // 聊天区背景设为主题自适应
+        // Set the chat area background to be theme-adaptive
 
         messagesScrollPane.viewport.apply {
 
@@ -920,13 +929,13 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-        // 输入框拖拽手柄直接调整 inputAreaPanel 高度
+        // The input box drag handle directly adjusts the inputAreaPanel height
 
         chatInputBar.onResizeRequest = { height ->
 
             if (height == Int.MAX_VALUE) {
 
-                // 双击重置
+                // Double-click to reset
 
                 inputAreaPanel.preferredSize = Dimension(Short.MAX_VALUE.toInt(), defaultInputHeight)
 
@@ -1102,7 +1111,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-        // 注册为当前活动实例，供 UploadConsoleAction 等外部调用
+        // Register as the currently active instance for external callers such as UploadConsoleAction
 
         currentInstance = this
 
@@ -1256,9 +1265,9 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     /**
 
-     * 从控制台/外部推送文本到聊天面板，以选中代码标签形式显示在输入框上方。
+     * Pushes text from the console/external source into the chat panel, showing it above the input box as a selected-code tag.
 
-     * 由 [UploadConsoleAction] 等右键操作调用。
+     * Invoked by right-click actions such as [UploadConsoleAction].
 
      */
 
@@ -1360,7 +1369,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
                 popupMenu.add(thinkingItem)
 
-                // ── 输出速度微调器（↑↓ 箭头切换，不弹出列表） ──
+                // ── Output-speed stepper (toggled with ↑↓ arrows, no dropdown list) ──
                 val speedLabel = JLabel(I18n.tr("chat.output.speed") + ":  ").apply {
                     font = font.deriveFont(11f)
                     foreground = JBColor(0x000000, 0xAAAAAA)
@@ -1378,7 +1387,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
                         val idx = speedLevels.indexOf(value)
                         if (idx >= 0) DeepSeekSettings.instance.outputSpeedLevel = idx
                     }
-                    // 让编辑器不可编辑，只能通过箭头切换
+                    // Make the editor non-editable so it can only be changed via the arrows
                     editor = JSpinner.DefaultEditor(this).apply {
                         textField.isEditable = false
                         textField.font = textField.font.deriveFont(11f)
@@ -1443,7 +1452,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-    /** 创建统一的小尺寸圆角图标按钮 */
+    /** Creates a uniform, small, rounded icon button */
 
     private fun createSmallRoundButton(icon: javax.swing.Icon, tooltipKey: String, action: () -> Unit): JComponent {
 
@@ -1588,7 +1597,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-    /** 供 PasteImageHandler 等外部组件调用：将图片文件添加为聊天附件 */
+    /** Called by external components such as PasteImageHandler: adds an image file as a chat attachment */
 
     fun addFileAttachmentFromExternal(file: java.io.File) {
 
@@ -1687,7 +1696,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
      * Image files are NOT processed here — they are handled asynchronously
 
-     * in [sendMessageWithImages] so the UI shows "解析中..." instead of a modal dialog.
+     * in [sendMessageWithImages] so the UI shows "Parsing..." instead of a modal dialog.
 
      */
 
@@ -1712,7 +1721,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
         for (file in textFiles) {
 
             if (sb.length >= maxContextChars) {
-                sb.appendLine("[其余附件因上下文总长度限制未内联，请缩小附件范围后重试。]")
+                sb.appendLine("[The remaining attachments were not inlined due to the total context length limit; please narrow the attachment scope and try again.]")
                 break
             }
 
@@ -1720,9 +1729,9 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
             if (content != null) {
 
-                sb.appendLine("以下为附件 `${file.name}`（${file.kind}）解析后的内容：")
+                sb.appendLine("The following is the parsed content of attachment `${file.name}` (${file.kind}):")
 
-                file.statusMessage?.let { sb.appendLine("> 注意：$it") }
+                file.statusMessage?.let { sb.appendLine("> Note: $it") }
 
                 sb.appendLine("```text")
 
@@ -1731,7 +1740,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
                 sb.appendLine(included)
 
                 if (included.length < content.length) {
-                    sb.appendLine("[附件内容已按上下文总长度限制截断]")
+                    sb.appendLine("[Attachment content truncated to fit the total context length limit]")
                 }
 
                 sb.appendLine("```")
@@ -1740,7 +1749,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
             } else {
 
-                sb.appendLine("[无法读取附件 `${file.name}`：${file.statusMessage ?: "未知错误"}]")
+                sb.appendLine("[Unable to read attachment `${file.name}`: ${file.statusMessage ?: "Unknown error"}]")
 
             }
 
@@ -1764,13 +1773,13 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
      * 1. Renders the user message with image file names shown inline
 
-     * 2. Creates an AI streaming bubble with "解析中..." status
+     * 2. Creates an AI streaming bubble with "Parsing..." status
 
      * 3. Parses images in a background thread
 
      * 4. Once parsing completes, feeds the enriched text to the AI for final response
 
-     * 5. The streaming bubble transitions from "解析中..." → AI response
+     * 5. The streaming bubble transitions from "Parsing..." → AI response
 
      */
 
@@ -1899,7 +1908,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-        // Create streaming bubble with "解析中..." status
+        // Create streaming bubble with "Parsing..." status
 
         removeMessagesFiller()
 
@@ -1937,7 +1946,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
                     val result = stepFunClient.parseImage(path)
 
-                    val description = result.getOrElse { e -> "[图片解析失败: ${e.message}]" }
+                    val description = result.getOrElse { e -> "[Image parsing failed: ${e.message}]" }
 
                     imageResults.add(fileName to description)
 
@@ -1979,7 +1988,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
                 val imageContext = imageResults.joinToString("\n\n") { (name, desc) ->
 
-                    "以下为图片 `$name` 的解析结果：" +
+                    "The following is the parsing result of image `$name`:" +
 
                     "\n> $desc"
 
@@ -2234,7 +2243,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
                 sendStopButton.toolTipText = I18n.tr("chat.tooltip.send")
 
-                addMessageLabel(I18n.tr("chat.error.prefix") + " 图片解析异常: " + (e.message ?: "未知错误"))
+                addMessageLabel(I18n.tr("chat.error.prefix") + " Image parsing error: " + (e.message ?: "Unknown error"))
 
                 ensureMessagesFiller()
 
@@ -2272,13 +2281,13 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     private fun createNewSession() {
 
-        // 当前会话为空时阻止创建新会话，给出友好提示
+        // Prevent creating a new conversation when the current one is empty, showing a friendly hint
 
         if (sessions.isNotEmpty() && currentSession().messages.isEmpty()) {
 
             ToolWindowManager.getInstance(project).notifyByBalloon(
 
-                "DeepSeek AI CodeHelper",
+                "DeepSeek-AI-Helper",
 
                 MessageType.INFO,
 
@@ -2396,7 +2405,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-        // P3: 虚拟化 — 只渲染最近 VISIBLE_BATCH_SIZE 条消息
+        // P3: virtualization — only render the most recent VISIBLE_BATCH_SIZE messages
 
         val total = session.messages.size
 
@@ -2417,9 +2426,9 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     /**
 
-     * P3: 渲染指定范围内的消息（左闭右开）。
+     * P3: renders the messages within the given range (left-inclusive, right-exclusive).
 
-     * 如果前面还有未渲染的消息，在顶部添加"加载更多"按钮。
+     * If there are unrendered messages before, adds a "Load more" button at the top.
 
      */
 
@@ -2427,7 +2436,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
         val messages = session.messages
 
-        // 如果起始不是 0，在顶部插入"加载更多"按钮
+        // If the start is not 0, insert a "Load more" button at the top
 
         if (start > 0) {
 
@@ -2583,7 +2592,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
         }
 
-        // 以最长选项文字"Q&A 全文扫描"的自然宽度为准，全局固定不随窗口伸缩
+        // Use the natural width of the longest option text "Q&A full-text scan" as the fixed global width, not resizing with the window
 
         val fixedW = combo.preferredSize.width
 
@@ -2600,17 +2609,17 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  第四模式：Claude/Codex 原生 CLI Agent
+    //  Fourth mode: Claude/Codex native CLI Agent
     // ════════════════════════════════════════════════════════════════
 
-    /** 第四模式下拉文案：跟随当前 Provider 动态显示 Claude Code / Codex */
+    /** Fourth-mode dropdown label: dynamically shows Claude Code / Codex based on the current Provider */
     private fun cliModeLabel(): String = when (DeepSeekSettings.instance.provider) {
         "anthropic" -> "Claude Code"
         "codex" -> "Codex"
         else -> "Claude/Codex"
     }
 
-    /** Provider 变化后刷新下拉第 4 项文案（remove/insert + 防抖标志恢复选中，避免 selectedIndex 漂移触发误切模式） */
+    /** After a Provider change, refresh the 4th dropdown item label (remove/insert + debounce flag to restore selection, avoiding selectedIndex drift that would accidentally switch modes) */
     private fun updateCliModeLabel() {
         val combo = modeDropdown ?: return
         suppressingModeDropdown = true
@@ -2626,16 +2635,16 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
         }
     }
 
-    /** CLI 模式无 SSE 的占位 EventSource（取消由 process.destroy 处理） */
+    /** Placeholder EventSource for the CLI mode, which has no SSE (cancellation is handled by process.destroy) */
     private fun emptyCliEventSource(): EventSource = object : EventSource {
         override fun cancel() {}
         override fun request(): Request = Request.Builder().url("http://localhost/").build()
     }
 
     /**
-     * 第四模式：驱动本地 Claude Code / Codex CLI 处理用户问题。
-     * Provider=anthropic → claude CLI；Provider=codex → codex CLI。
-     * CLI 直接以 agent 身份执行（改代码/跑命令/调工具），凭据用本地登录态。
+     * Fourth mode: drives the local Claude Code / Codex CLI to handle the user's question.
+     * Provider=anthropic → claude CLI; Provider=codex → codex CLI.
+     * The CLI executes directly as an agent (edits code / runs commands / calls tools), using the local login state for credentials.
      */
     private fun sendCliAgentMessage(text: String) {
         val files = attachedFiles.toList()
@@ -2789,13 +2798,13 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
         renderUserMessage(displayText)
         messageHistory.add(ChatMessage("user", displayText))
 
-        // 流式 assistant 气泡（必须 Role.STREAMING，streamTextArea 才非空）
+        // Streaming assistant bubble (must be Role.STREAMING so streamTextArea is non-null)
         val bubble = MessageBubble(project, MessageBubble.Role.STREAMING)
         val textArea = createStreamingArea(bubble)
         sendStopButton.text = I18n.tr("chat.stop.enter")
         sendStopButton.toolTipText = I18n.tr("chat.tooltip.stop")
 
-        // CLI 执行前快照（用于变更管理）
+        // Pre-execution snapshot of the CLI (used for change management)
         val projectDir = java.io.File(project.basePath ?: System.getProperty("user.home"))
         val snapshotBefore = CliChangeTracker.snapshot(projectDir)
 
@@ -2812,7 +2821,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
             chatState.set(ChatState.Idle)
             stopThinkingAnimation()
 
-            // ① 变更对比 → 变更管理（核心功能：优先执行，UI 渲染失败不影响记录）
+            // ① Change comparison → change management (core feature: runs first; UI rendering failures do not affect recording)
             val changedCount = try {
                 CliChangeTracker.recordChanges(
                     project, snapshotBefore, CliChangeTracker.snapshot(projectDir),
@@ -2824,7 +2833,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
             }
             System.err.println("[CLI Agent] finalize: changedCount=$changedCount")
 
-            // ② UI 收尾（渲染异常不阻断，已记录变更）
+            // ② UI finalization (rendering exceptions do not block; changes have already been recorded)
             try {
                 val parsed = parseThinkingResponse(content)
                 val displayContent = parsed.second
@@ -2887,7 +2896,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
             }
         )
 
-        // 先建占位 state，进程创建后再补充 process 引用（供停止按钮销毁）
+        // Create a placeholder state first, then fill in the process reference after process creation (so the stop button can destroy it)
         chatState.set(
             ChatState.Streaming(
                 eventSource = emptyCliEventSource(),
@@ -2989,16 +2998,16 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
         if (isStreaming || isPreparingAttachments) return
 
-        // 刷新第四模式下拉文案（跟随 Provider 动态显示 Claude Code / Codex）
+        // Refresh the fourth-mode dropdown label (dynamically shows Claude Code / Codex based on the Provider)
 
         updateCliModeLabel()
 
-        // 发送新消息：恢复自动滚动跟随新回复
+        // Sending a new message: resume auto-scroll to follow the new reply
         autoScrollController.resumeFollowing()
 
 
 
-        // 意图确认阶段 — 用户补充说明
+        // Intent-confirmation phase — the user's additional notes
 
         pendingConfirmation?.let { callback ->
 
@@ -3068,7 +3077,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-        // 有图片 → 异步图片解析流程
+        // Has image → asynchronous image-parsing flow
 
         val imageFiles = collectImageAttachments()
 
@@ -3138,9 +3147,9 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     /**
 
-     * Q&A 全文扫描模式：先扫描项目获取相关上下文（文件结构 + 相关源码），
+     * Q&A full-text scan mode: first scans the project to obtain relevant context (file structure + related source code),
 
-     * 再以 Q&A 方式回答（不走 Agent Pipeline）。
+     * then answers in a Q&A manner (without going through the Agent Pipeline).
 
      */
 
@@ -3160,15 +3169,15 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
         inputArea.text = ""
 
-        // 提取图片附件（全文扫描也要解析图片）
+        // Extract image attachments (full-text scan must also parse images)
         val temporarySources = attachedFiles.toList()
         val originalImageFiles = attachedFiles.filter { it.isImage }
         val imageFiles = collectImageAttachments()
         val imagePaths = imageFiles.map { it.absolutePath }
-        // 先从 attachedFiles 中移除图片（文本文件仍保留到 fileContext）
+        // First remove images from attachedFiles (text files are still kept for fileContext)
         attachedFiles.removeAll(originalImageFiles)
 
-        // 1. 构建初始文本（包含编辑器选中代码 + 已上传文件上下文）
+        // 1. Build the initial text (including editor-selected code + uploaded file context)
 
         val fileContext = buildTextFileContext()
 
@@ -3216,7 +3225,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-        // 把用户消息展示到聊天区（含选中代码上下文）
+        // Show the user message in the chat area (including the selected-code context)
 
         messageHistory.add(ChatMessage("user", userText))
 
@@ -3228,7 +3237,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-        // 2. 显示分析状态（使用旋转动画替代静态标签）
+        // 2. Show the analysis status (using a spinner animation instead of a static label)
 
         val spinnerChars = listOf("◐", "◓", "◑", "◒")
 
@@ -3242,7 +3251,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
             border = JBUI.Borders.empty(4, 16, 4, 16)
 
-            text = I18n.tr("chat.thinking") + " ◐"
+            text = I18n.tr("chat.analysis.scanning") + " ◐"
 
         }
 
@@ -3254,13 +3263,13 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
             spinnerIdx = (spinnerIdx + 1) % spinnerChars.size
 
-            analysisLabel.text = I18n.tr("chat.thinking") + " " + spinnerChars[spinnerIdx]
+            analysisLabel.text = I18n.tr("chat.analysis.scanning") + " " + spinnerChars[spinnerIdx]
 
         }.apply { start() }
 
 
 
-        // 2. 后台扫描项目上下文（不经过 AI 判断，直接获取结构+搜索相关源码）
+        // 2. Scan project context in the background (without AI judgement; directly get the structure + search related source code)
 
         val preparationGeneration = beginAttachmentPreparation()
         preparationCancelUi = {
@@ -3290,13 +3299,13 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
                     }
                 } else emptyList()
 
-                // 非原生格式继续使用现有图片解析服务作为兼容回退。
+                // For non-native formats, continue using the existing image-parsing service as a compatibility fallback.
                 val imageContext = if (imagePaths.isNotEmpty() && nativeImageParts.isEmpty()) {
                     val results = imagePaths.map { path ->
                         val fileName = java.nio.file.Paths.get(path).fileName.toString()
                         val description = stepFunClient.parseImage(path)
-                            .getOrElse { e -> "[图片解析失败: " + e.message + "]" }
-                        "图片 `" + fileName + "` 的解析结果：\n> " + description
+                            .getOrElse { e -> "[Image parsing failed: " + e.message + "]" }
+                        "The parsing result of image `" + fileName + "`:\n> " + description
                     }
                     "\n\n" + results.joinToString("\n\n---\n\n")
                 } else ""
@@ -3318,29 +3327,29 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
                 val reasoningDetail = buildString {
 
-                    appendLine("### 项目上下文扫描结果")
+                    appendLine("### Project Context Scan Result")
 
                     appendLine()
 
-                    appendLine("用户问题：$userText")
+                    appendLine("User question: $userText")
 
                     appendLine()
 
                     if (projectStructure.isNotBlank()) {
 
-                        appendLine("✅ 已扫描项目结构 (${projectStructure.lines().size} 行)")
+                        appendLine("✅ Scanned project structure (${projectStructure.lines().size} lines)")
 
                     }
 
                     if (relatedContext.isNotBlank()) {
 
-                        appendLine("✅ 已搜索相关源文件 (${relatedContext.lines().size} 行)")
+                        appendLine("✅ Searched related source files (${relatedContext.lines().size} lines)")
 
                     }
 
                     if (projectStructure.isBlank() && relatedContext.isBlank()) {
 
-                        appendLine("⚠️ 未找到项目上下文")
+                        appendLine("⚠️ No project context found")
 
                     }
 
@@ -3352,7 +3361,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
                     if (projectStructure.isNotBlank()) {
 
-                        appendLine("【项目结构参考】")
+                        appendLine("[Project Structure Reference]")
 
                         append(projectStructure)
 
@@ -3362,7 +3371,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
                     if (enrichedSearchContext.isNotBlank()) {
 
-                        appendLine("【相关源文件内容】")
+                        appendLine("[Related Source File Content]")
 
                         append(enrichedSearchContext)
 
@@ -3378,7 +3387,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-                // 5. 切回 EDT，展示分析思考过程 + 开始回答
+                // 5. Switch back to the EDT, show the analysis reasoning process + start answering
 
                 ApplicationManager.getApplication().invokeLater {
 
@@ -3390,7 +3399,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-                    // 展示分析结果的折叠思考区域
+                    // Show the collapsible reasoning area with the analysis result
 
                     if (reasoningDetail.isNotBlank()) {
 
@@ -3416,7 +3425,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-                    // 复用 respondDirectly（已渲染 + 已保存，传 userAlreadyRendered = true 跳过重复）
+                    // Reuse respondDirectly (already rendered + already saved; pass userAlreadyRendered = true to skip duplication)
 
                     respondDirectly(
                         userText,
@@ -3473,7 +3482,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
         val sb = StringBuilder()
 
-        sb.appendLine("当前项目文件结构及内容如下：\n")
+        sb.appendLine("The current project file structure and contents are as follows:\n")
 
         try {
 
@@ -3487,7 +3496,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
         } catch (_: Exception) {
 
-            sb.appendLine("(无法读取项目文件结构)")
+            sb.appendLine("(Unable to read the project file structure)")
 
         }
 
@@ -3567,7 +3576,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     /**
 
-     * 从 @文件名 引用中读取文件内容作为上下文。
+     * Reads file content from an @filename reference as context.
 
      */
 
@@ -3579,16 +3588,16 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     /**
 
-     * 直接回答模式：不读取源文件、不扫描目录，仅将用户问题发给 AI。
+     * Direct-answer mode: does not read source files or scan directories; it only sends the user's question to the AI.
 
      */
 
     private fun buildQaSystemPrompt(text: String): String = buildString {
         appendLine(DOMAIN_RESTRICTION_PROMPT)
         appendLine()
-        appendLine("你是一个 AI 代码助手，帮助用户准确、简洁地解答技术问题。")
-        appendLine("优先给出可验证的结论和必要代码。不要输出隐藏思维链；需要解释时只给简明依据。")
-        appendLine(if (DeepSeekSettings.instance.language == "en") "Please reply in English." else "请用中文回复。")
+        appendLine("You are an AI coding assistant that helps users answer technical questions accurately and concisely.")
+        appendLine("Prefer verifiable conclusions and the necessary code. Do not output hidden chains of thought; when an explanation is needed, give only a concise justification.")
+        appendLine(if (DeepSeekSettings.instance.language == "en") "Please reply in English." else "Please reply in English.")
 
         val skillsContent = unifiedSettingsPanel.getEnabledSkillsContent(text)
         if (skillsContent.isNotBlank()) {
@@ -3618,9 +3627,9 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
         visit(base)
         return buildString {
-            appendLine("当前项目文件路径：")
+            appendLine("Current project file paths:")
             paths.forEach { appendLine("- $it") }
-            if (paths.size >= maxFiles) appendLine("- ...（文件列表已截断）")
+            if (paths.size >= maxFiles) appendLine("- ...(file list truncated)")
         }
     }
 
@@ -3691,11 +3700,11 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-        // ── 平滑输出：令牌缓冲队列 + 定时冲刷 ──
+        // ── Smooth output: token buffer queue + scheduled flush ──
 
         val tokenBuffer = StringBuilder()
 
-        val reasoningBuffer = StringBuilder()  // 累积 reasoning_content
+        val reasoningBuffer = StringBuilder()  // accumulate reasoning_content
 
         val flushTimer = Timer(40) {
 
@@ -3751,7 +3760,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
                 flushTimer.stop()
 
-                // 冲刷剩余缓冲
+                // Flush the remaining buffer
 
                 if (tokenBuffer.isNotEmpty()) {
 
@@ -3774,7 +3783,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
                     removeStreamingArea(oldState, revalidateAfter = false)
                 }
 
-                // 解析响应中的思考推演过程与最终答案
+                // Parse the reasoning process and final answer from the response
 
                 val parsed = parseThinkingResponse(fullResponse)
 
@@ -3806,7 +3815,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
                 flushTimer.stop()
 
-                // 冲刷剩余缓冲
+                // Flush the remaining buffer
 
                 if (tokenBuffer.isNotEmpty()) {
 
@@ -3900,7 +3909,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     /**
 
-     * 同步回答模式（流式关闭时使用）：一次性调用 API，渲染完整结果。
+     * Synchronous answer mode (used when streaming is off): calls the API once and renders the full result.
 
      */
 
@@ -4003,8 +4012,8 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
                 val imageContext = imagePaths.joinToString("\n\n") { path ->
                     val fileName = java.nio.file.Paths.get(path).fileName.toString()
                     val description = stepFunClient.parseImage(path)
-                        .getOrElse { error -> "[图片解析失败: ${error.message}]" }
-                    "以下为图片 `$fileName` 的解析结果：\n> $description"
+                        .getOrElse { error -> "[Image parsing failed: ${error.message}]" }
+                    "The following is the parsing result of image `$fileName`:\n> $description"
                 }
                 buildString {
                     append(fileContext)
@@ -4089,7 +4098,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-        // 先将消息加入 session，再渲染气泡（确保删除按钮能正确找到消息索引）
+        // Add the message to the session first, then render the bubble (ensures the delete button can find the correct message index)
 
         messageHistory.add(ChatMessage("user", finalText))
 
@@ -4107,7 +4116,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-        // ── 通过 SearchCoordinator 搜索相关上下文 ──
+        // ── Search for related context via SearchCoordinator ──
 
         val searchResult = searchCoordinator.search(finalText)
 
@@ -4123,13 +4132,13 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
         val sourceRootsHint = if (sourceRoots.isNotEmpty()) {
 
-            "项目的源码根目录有：\n" + sourceRoots.joinToString("\n") { "- $it" }
+            "The project source roots are:\n" + sourceRoots.joinToString("\n") { "- $it" }
 
         } else ""
 
 
 
-        // 获取技能内容（所有阶段共享）
+        // Get the skill content (shared by all phases)
 
         val skillsContent = unifiedSettingsPanel.getEnabledSkillsContent(userText)
 
@@ -4137,7 +4146,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
         // ════════════════════════════════════════════════════════════
 
-        //  意图确认 Phase — 由 Agent Pipeline 配置决定
+        //  Intent-confirmation Phase — decided by the Agent Pipeline configuration
 
         // ════════════════════════════════════════════════════════════
 
@@ -4155,7 +4164,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
         if (settings.agentPhase0Enabled && p0ApiKey.isNotBlank()) {
 
-            // Phase 0 已配置 → 先进行意图确认
+            // Phase 0 configured → perform intent confirmation first
 
             startIntentConfirmation(
 
@@ -4175,7 +4184,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
         } else if (settings.agentPhase1Enabled) {
 
-            // Phase 0 未配置/关闭 → 进入规划阶段
+            // Phase 0 not configured / disabled → enter the planning phase
 
             addMessageLabel(phaseTransitionLabel(p1Model, "planning"))
 
@@ -4195,7 +4204,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
         } else {
 
-            // Phase 0 和 Phase 1 均关闭 → 直接进入编码阶段
+            // Both Phase 0 and Phase 1 disabled → enter the coding phase directly
 
             val p2Provider = LlmProviderRegistry.get(settings.agentPhase2Provider)
 
@@ -4238,7 +4247,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     // ════════════════════════════════════════════════════════════════
 
-    //  意图确认 Phase — Agnes 理解需求，用户确认后才进入规划阶段
+    //  Intent-confirmation Phase — Agnes understands the requirement; only after user confirmation does it enter the planning phase
 
     // ════════════════════════════════════════════════════════════════
 
@@ -4246,15 +4255,15 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     /**
 
-     * 意图确认与循环：
+     * Intent confirmation and loop:
 
-     * 1. 调用 Agnes 分析用户需求，生成一句话概括
+     * 1. Call Agnes to analyze the user's requirement and produce a one-sentence summary
 
-     * 2. 显示「是/否」按钮让用户确认
+     * 2. Show Yes/No buttons for the user to confirm
 
-     * 3. 是 → 进入规划 Agent
+     * 3. Yes → enter the planning Agent
 
-     * 4. 否 → 用户补充说明 → 结合上一次分析结果重新调用 Agnes → 回到步骤 2
+     * 4. No → the user adds notes → call Agnes again combining the previous analysis result → return to step 2
 
      */
 
@@ -4291,7 +4300,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-        // ═══ 动画加载指示器（旋转字符）替代静态标签 ═══
+        // ═══ Animated loading indicator (spinning characters) replacing the static label ═══
 
         val (analysisLabel, animTimer) = createAnalysisAnimation(p0Provider.displayName, "chat.agent.understanding")
 
@@ -4305,33 +4314,33 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
             appendLine()
 
-            appendLine("你是一个需求分析助手。分析用户对代码库的需求，只输出 JSON 对象（不要 markdown 代码块，不要其他文字）：")
+            appendLine("You are a requirements analysis assistant. Analyze the user's needs for the codebase and output only a JSON object (no markdown code blocks, no other text):")
 
             appendLine()
 
             appendLine("{")
 
-            appendLine("  \"intent\": \"一句话概括用户的核心意图\",")
+            appendLine("  \"intent\": \"A one-sentence summary of the user's core intent\",")
 
             appendLine("  \"isClear\": true,")
 
-            appendLine("  \"complexity\": \"simple\",    // simple=简单任务 / complex=复杂任务")
+            appendLine("  \"complexity\": \"simple\",    // simple=simple task / complex=complex task")
 
-            appendLine("  \"workload\": \"涉及的文件数量和改动范围\",")
+            appendLine("  \"workload\": \"The number of files involved and the scope of changes\",")
 
-            appendLine("  \"dependency\": \"文件间的依赖关系和耦合情况\",")
+            appendLine("  \"dependency\": \"Dependencies and coupling between files\",")
 
-            appendLine("  \"reason\": \"综合工作量、关联性，说明为什么判定为简单或复杂\"")
+            appendLine("  \"reason\": \"Based on the combined workload and relatedness, explain why this is judged simple or complex\"")
 
             appendLine("}")
 
-            appendLine("## 项目结构")
+            appendLine("## Project Structure")
 
             appendLine(projectStructure)
 
             if (relatedContext.isNotBlank()) {
 
-                appendLine("## 相关源文件")
+                appendLine("## Related Source Files")
 
                 appendLine(relatedContext.take(1000))
 
@@ -4341,15 +4350,15 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
             if (previousAnalysis != null) {
 
-                appendLine("你之前的分析：$previousAnalysis")
+                appendLine("Your previous analysis: $previousAnalysis")
 
-                appendLine("用户补充说明：$userText")
+                appendLine("User's additional notes: $userText")
 
-                appendLine("请结合补充信息重新分析，按上述格式输出。")
+                appendLine("Please re-analyze taking the additional information into account and output in the format above.")
 
             } else {
 
-                appendLine("用户需求：$userText")
+                appendLine("User requirement: $userText")
 
             }
 
@@ -4357,7 +4366,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-        // 在后台线程执行网络请求，避免阻塞 EDT
+        // Run the network request on a background thread to avoid blocking the EDT
 
         ApplicationManager.getApplication().executeOnPooledThread {
 
@@ -4381,7 +4390,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-            // UI 更新切回 EDT
+            // Switch back to the EDT for UI updates
 
             ApplicationManager.getApplication().invokeLater {
 
@@ -4397,7 +4406,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
                 result.onSuccess { interpretation ->
 
-                    // 解析 AI 返回的 JSON
+                    // Parse the JSON returned by the AI
 
                     val cleanInterpretation = interpretation.trim()
 
@@ -4445,7 +4454,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
                         intent = extractStr(jsonText, "intent")
 
-                            ?: cleanInterpretation.removePrefix("分析：").removePrefix("分析结果：").trim()
+                            ?: cleanInterpretation.removePrefix("Analysis:").removePrefix("Analysis result:").trim()
 
                         isClear = extractBool(jsonText, "isClear") ?: true
 
@@ -4461,25 +4470,25 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
                         System.err.println("[Phase0] JSON parse error: ${e.message}")
 
-                        intent = cleanInterpretation.removePrefix("分析：").removePrefix("分析结果：").trim()
+                        intent = cleanInterpretation.removePrefix("Analysis:").removePrefix("Analysis result:").trim()
 
                     }
 
 
 
-                    // 构建详细展示信息
+                    // Build the detailed display information
 
                     val detailLines = buildString {
 
                         appendLine(intent)
 
-                        if (workload.isNotEmpty()) appendLine("📊 工作量：$workload")
+                        if (workload.isNotEmpty()) appendLine("📊 Workload: $workload")
 
-                        if (dependency.isNotEmpty()) appendLine("🔗 关联性：$dependency")
+                        if (dependency.isNotEmpty()) appendLine("🔗 Relatedness: $dependency")
 
-                        if (complexity == "simple") appendLine("📋 判定：简单任务 → 直接编码")
+                        if (complexity == "simple") appendLine("📋 Verdict: simple task → code directly")
 
-                        else appendLine("📋 判定：复杂任务 → 全流程执行")
+                        else appendLine("📋 Verdict: complex task → run the full pipeline")
 
                     }
 
@@ -4489,7 +4498,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-                    // ── 确认按钮 ──
+                    // ── Confirmation buttons ──
 
                     val buttonPanel = JPanel(FlowLayout(FlowLayout.LEFT, 8, 4)).apply {
 
@@ -4520,7 +4529,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
                             if (complexity == "simple" || !s.agentPhase1Enabled) {
 
-                                // 简单任务或 Phase 1 关闭 → 跳过规划与审查，直接进入编码阶段
+                                // Simple task or Phase 1 disabled → skip planning and review, enter the coding phase directly
 
                                 addMessageLabel(I18n.tr("chat.agent.single.file"))
 
@@ -4557,7 +4566,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
                             } else {
 
-                                // 复杂任务 → 全流程执行
+                                // Complex task → run the full pipeline
 
                                 addMessageLabel(phaseTransitionLabel(p1ModelLocal, "planning"))
 
@@ -4593,11 +4602,11 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-                            // 设置回调，等待用户在输入区补充说明
+                            // Set the callback, waiting for the user to add notes in the input area
 
                             pendingConfirmation = { clarification ->
 
-                                // 递归 — 用补充说明 + 上一次分析重新调用 Agnes
+                                // Recursion — call Agnes again with the additional notes + previous analysis
 
                                 startIntentConfirmation(
 
@@ -4738,7 +4747,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     // ════════════════════════════════════════════════════════════════
 
-    //  Phase 1: 规划 Agent — DeepSeek-V4-Pro
+    //  Phase 1: planning Agent — DeepSeek-V4-Pro
 
     // ════════════════════════════════════════════════════════════════
 
@@ -4769,7 +4778,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-        // 构建规划阶段的系统提示（在 startPlanPhase 内部构建，避免与 sendAgentMessage 重复）
+        // Build the system prompt for the planning phase (built inside startPlanPhase to avoid duplication with sendAgentMessage)
 
         val planSystemPrompt = buildString {
 
@@ -4777,11 +4786,11 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
             appendLine()
 
-            appendLine("你是代码助手的规划 Agent（Planner）。你的任务是分析用户的需求，结合项目结构和相关源文件，制定详细的代码修改计划。")
+            appendLine("You are the planning Agent (Planner) of the code assistant. Your task is to analyze the user's requirement and, together with the project structure and related source files, produce a detailed code-change plan.")
 
             appendLine()
 
-            appendLine("## 项目结构")
+            appendLine("## Project Structure")
 
             appendLine(projectStructure)
 
@@ -4789,7 +4798,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
             if (relatedContext.isNotEmpty()) {
 
-                appendLine("## 相关源文件内容")
+                appendLine("## Related Source File Content")
 
                 appendLine(relatedContext)
 
@@ -4799,7 +4808,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
             if (sourceRootsHint.isNotEmpty()) {
 
-                appendLine("## 项目源码根目录")
+                appendLine("## Project Source Roots")
 
                 appendLine(sourceRootsHint)
 
@@ -4807,19 +4816,19 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
             }
 
-            appendLine("## 输出格式")
+            appendLine("## Output Format")
 
-            appendLine("请输出一个结构化的计划，包含：")
+            appendLine("Please output a structured plan that includes:")
 
-            appendLine("1. 需要创建/修改/删除的文件列表，每个文件写明路径和操作类型")
+            appendLine("1. A list of files to create/modify/delete, with the path and operation type for each file")
 
-            appendLine("2. 每个文件的详细修改要点或新增内容说明")
+            appendLine("2. Detailed change points or new-content descriptions for each file")
 
-            appendLine("3. 依赖关系或注意事项（如需要先创建接口再实现等）")
+            appendLine("3. Dependencies or notes (e.g. an interface must be created before its implementation)")
 
             appendLine()
 
-            appendLine("以清晰的 Markdown 格式输出。")
+            appendLine("Output in clear Markdown format.")
 
             if (skillsContent.isNotBlank()) {
 
@@ -4851,7 +4860,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
             onPhaseComplete = { fullResponse, _ ->
 
-                // ── 过渡到 Phase 2 ──
+                // ── Transition to Phase 2 ──
 
                 val p2Provider = LlmProviderRegistry.get(s.agentPhase2Provider)
 
@@ -4898,7 +4907,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     // ════════════════════════════════════════════════════════════════
 
-    //  Phase 2: 编码 Agent — DeepSeek-V4-Flash
+    //  Phase 2: coding Agent — DeepSeek-V4-Flash
 
     // ════════════════════════════════════════════════════════════════
 
@@ -4946,11 +4955,11 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
             appendLine()
 
-            appendLine("你是代码助手的编码 Agent（Coder）。你的任务是根据${if (directFromPhase0) "用户的需求" else "规划 Agent 制定的计划"}，生成具体的代码修改。")
+            appendLine("You are the coding Agent (Coder) of the code assistant. Your task is to generate concrete code changes based on ${if (directFromPhase0) "the user's requirements" else "the plan produced by the planning Agent"}.")
 
             appendLine()
 
-            appendLine("## 项目结构")
+            appendLine("## Project Structure")
 
             appendLine(projectStructure)
 
@@ -4958,7 +4967,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
             if (relatedContext.isNotEmpty()) {
 
-                appendLine("## 相关源文件内容")
+                appendLine("## Related Source File Content")
 
                 appendLine(relatedContext)
 
@@ -4968,35 +4977,35 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
             if (sourceRootsHint.isNotEmpty()) {
 
-                appendLine("## 项目源码根目录")
+                appendLine("## Project Source Roots")
 
                 appendLine(sourceRootsHint)
 
                 appendLine()
 
-                appendLine("**重要：创建新文件时必须使用上述已存在的源码根目录之一，不要创建新的源码根目录。**")
+                appendLine("**Important: when creating new files you must use one of the existing source roots above; do not create a new source root.**")
 
                 appendLine()
 
             }
 
-            appendLine(if (directFromPhase0) "## 用户需求" else "## 规划 Agent 的计划")
+            appendLine(if (directFromPhase0) "## User Requirements" else "## Planning Agent's Plan")
 
             appendLine(planResponse)
 
             appendLine()
 
-            appendLine("## 输出格式")
+            appendLine("## Output Format")
 
-            appendLine("对于每个需要创建或修改的文件，请使用以下格式：")
+            appendLine("For each file to create or modify, use the following format:")
 
             appendLine()
 
-            appendLine("<file path=\"相对路径/文件名.扩展名\">")
+            appendLine("<file path=\"relative/path/filename.extension\">")
 
-            appendLine("```语言名")
+            appendLine("```language-name")
 
-            appendLine("文件内容...")
+            appendLine("File content...")
 
             appendLine("```")
 
@@ -5004,25 +5013,25 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
             appendLine()
 
-            appendLine("如果要删除文件，使用：")
+            appendLine("To delete a file, use:")
 
-            appendLine("<file path=\"相对路径/文件名.扩展名\" action=\"delete\"></file>")
+            appendLine("<file path=\"relative/path/filename.extension\" action=\"delete\"></file>")
 
             appendLine()
 
-            appendLine("## 规则")
+            appendLine("## Rules")
 
-            appendLine("1. 所有路径都是相对于项目根目录的")
+            appendLine("1. All paths are relative to the project root")
 
-            appendLine("2. 对于已有的文件，修改时基于相关源文件内容进行增删改，输出**完整的新文件内容**（不要省略）")
+            appendLine("2. For existing files, add/delete/modify based on the related source file content and output the **complete new file content** (do not omit anything)")
 
-            appendLine("3. [重要] 创建新文件时，必须放在已有包目录下，严禁创建新的一级源码目录")
+            appendLine("3. [Important] When creating a new file, it must be placed under an existing package directory; creating a new top-level source directory is forbidden")
 
-            appendLine("4. 优先使用项目中已有的框架、模式和编码风格")
+            appendLine("4. Prefer the frameworks, patterns, and coding style already used in the project")
 
-            appendLine("5. 输出文件修改后，简要总结你做了什么改动")
+            appendLine("5. After outputting the file changes, briefly summarize what you changed")
 
-            appendLine("6. 项目启动类必须放在 controller、service、entity 等包的同级目录下，不可放在子包中")
+            appendLine("6. The project's startup class must be placed in the same directory level as the controller, service, entity packages, not inside a sub-package")
 
             if (skillsContent.isNotBlank()) append(skillsContent)
 
@@ -5038,7 +5047,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
             onPhaseComplete = { fullResponse, _ ->
 
-                // 解析并执行文件操作
+                // Parse and execute the file operations
 
                 val operations = fileOperationExecutor.parseFileOperations(fullResponse)
 
@@ -5050,7 +5059,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-                // ── 过渡到 Phase 3 ──
+                // ── Transition to Phase 3 ──
 
                 val s = DeepSeekSettings.instance
 
@@ -5100,7 +5109,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
             model = p2Model, temperature = 0.7, maxTokens = 8192,
 
-            messages = listOf(ChatMessage("system", systemPrompt), ChatMessage("user", "请根据上面的规划生成代码。")),
+            messages = listOf(ChatMessage("system", systemPrompt), ChatMessage("user", "Generate the code according to the plan above.")),
 
             protocol = protocol,
 
@@ -5118,7 +5127,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     // ════════════════════════════════════════════════════════════════
 
-    //  Phase 3: 审查 Agent — Agnes-2.0-Flash
+    //  Phase 3: review Agent — Agnes-2.0-Flash
 
     // ════════════════════════════════════════════════════════════════
 
@@ -5156,39 +5165,39 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
             appendLine()
 
-            appendLine("你是一个专业的代码审查 Agent（Reviewer）。你的任务是审查编码 Agent 生成的代码修改。")
+            appendLine("You are a professional code-review Agent (Reviewer). Your task is to review the code changes produced by the coding Agent.")
 
             appendLine()
 
-            appendLine("## 原始规划")
+            appendLine("## Original Plan")
 
             appendLine(planResponse)
 
             appendLine()
 
-            appendLine("## 生成的代码")
+            appendLine("## Generated Code")
 
             appendLine(codeResponse)
 
             appendLine()
 
-            appendLine("## 审查要点")
+            appendLine("## Review Points")
 
-            appendLine("请从以下维度进行审查：")
+            appendLine("Please review along the following dimensions:")
 
-            appendLine("1. ✅ **正确性**: 代码是否正确实现了规划中的需求？")
+            appendLine("1. ✅ **Correctness**: Does the code correctly implement the requirements in the plan?")
 
-            appendLine("2. 🔒 **安全性**: 是否存在安全漏洞？")
+            appendLine("2. 🔒 **Security**: Are there any security vulnerabilities?")
 
-            appendLine("3. ⚡ **性能**: 是否存在性能问题？")
+            appendLine("3. ⚡ **Performance**: Are there any performance issues?")
 
-            appendLine("4. 📐 **编码规范**: 是否符合编码规范？")
+            appendLine("4. 📐 **Coding standards**: Does it comply with the coding standards?")
 
-            appendLine("5. 📋 **完整性**: 是否所有文件都已正确生成？")
+            appendLine("5. 📋 **Completeness**: Were all files generated correctly?")
 
             appendLine()
 
-            appendLine("如果发现问题，指出问题位置和修改建议。如果没有问题，给出总体评价。")
+            appendLine("If problems are found, point out their locations and suggest changes. If there are no problems, give an overall assessment.")
 
         }
 
@@ -5215,7 +5224,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
             model = reviewModel, temperature = 0.3, maxTokens = 2048,
 
-            messages = listOf(ChatMessage("system", systemPrompt), ChatMessage("user", "请审查上述代码修改。")),
+            messages = listOf(ChatMessage("system", systemPrompt), ChatMessage("user", "Please review the code changes above.")),
 
             protocol = protocol,
 
@@ -5231,7 +5240,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-    /** 清理当前流式状态并重置发送按钮。 */
+    /** Clears the current streaming state and resets the send button. */
 
     internal fun cleanupStreamingAndResetButton() {
 
@@ -5253,7 +5262,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-    /** 完成 Agent 会话的收尾工作（保存、填充）。 */
+    /** Finishes the Agent conversation (save and fill). */
 
     internal fun finalizeAgentSession() {
 
@@ -5374,13 +5383,13 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
         if (oldState is ChatState.Streaming) {
 
-            // 停止所有运行中的 Timer，防止它们操作已移除的组件
+            // Stop all running Timers so they don't touch components that have already been removed
             oldState.flushTimer?.stop()
             oldState.thinkingTimer?.stop()
 
             oldState.eventSource.cancel()
 
-            // CLI Agent 模式：销毁子进程（先温和 destroy，3s 后强杀）
+            // CLI Agent mode: destroy the child process (graceful destroy first, force-kill after 3s)
 
             oldState.process?.let { p ->
 
@@ -5402,7 +5411,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
             }
 
-            // 读取已累积的流式内容，渲染为完整的 ASSISTANT 气泡
+            // Read the accumulated streaming content and render it as a complete ASSISTANT bubble
             val partialContent = oldState.buffer.toString()
             val partialReasoning = oldState.reasoningBuffer.toString().ifEmpty { null }
 
@@ -5433,7 +5442,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     internal fun saveSessions() {
 
-        // 防抖：500ms 内多次调用合并为一次磁盘写入
+        // Debounce: multiple calls within 500ms are merged into a single disk write
 
         saveTimer.restart()
 
@@ -5441,7 +5450,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-    /** 实际的持久化逻辑（由 debounce timer 触发） */
+    /** The actual persistence logic (triggered by the debounce timer) */
 
     private fun doSaveSessions() {
 
@@ -5529,7 +5538,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
         stopThinkingAnimation()
 
-        // 关闭时同步保存（跳过 debounce，确保数据落盘）
+        // Synchronous save on close (skips debounce, ensuring data is flushed to disk)
 
         saveTimer.stop()
 
@@ -5541,7 +5550,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     // ════════════════════════════════════════════════════════════════
 
-    //  Agentic Search 辅助方法
+    //  Agentic Search helper methods
 
     // ════════════════════════════════════════════════════════════════
 
@@ -5549,9 +5558,9 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     /**
 
-     * 判断用户查询是否与代码相关。
+     * Determines whether the user's query is code-related.
 
-     * 代码查询使用 Agentic Search，文档查询使用 RAG。
+     * Code queries use Agentic Search; documentation queries use RAG.
 
      */
 
@@ -5562,9 +5571,9 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     /**
 
-     * 单轮 Agentic Search：提取关键词 → grep → 构建上下文。
+     * Single-round Agentic Search: extract keywords → grep → build context.
 
-     * 用于单轮模式（agenticSearchMaxRounds <= 1）。
+     * Used in single-round mode (agenticSearchMaxRounds <= 1).
 
      */
 
@@ -5576,7 +5585,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     /**
 
-     * 从用户查询中提取搜索关键词。
+     * Extracts search keywords from the user's query.
 
      */
 
@@ -5588,9 +5597,9 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     /**
 
-     * 根据用户请求文本，静默搜索相关源文件并读取完整内容。
+     * Based on the user's request text, silently searches for related source files and reads their full content.
 
-     * 返回格式化后的字符串，供 Agent 系统 prompt 使用。
+     * Returns a formatted string for use in the Agent system prompt.
 
      */
 
@@ -5602,7 +5611,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     // ════════════════════════════════════════════════════════════════
 
-    //  UI 展示截断工具
+    //  UI display truncation utilities
 
     // ════════════════════════════════════════════════════════════════
 
@@ -5610,19 +5619,19 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     /**
 
-     * 截断字符串中所有 ```代码块``` 的内容为前 [maxLines] 行。
+     * Truncates the content of all ```code blocks``` in the string to the first [maxLines] lines.
 
-     * 仅影响 UI 展示，不影响完整消息内容。
+     * Affects only UI display, not the full message content.
 
-     * 格式：
+     * Format:
 
      *   ```lang
 
-     *   第1行
+     *   Line 1
 
      *   ...
 
-     *   第N行 (N > maxLines 时)
+     *   Line N (when N > maxLines)
 
      *   ......
 
@@ -5644,25 +5653,25 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-    /** 待执行的滚动定位任务标记 — 合并多次 scrollToBottom 调用，避免流式期间 EDT 堆积。 */
-    // 以下三个 settle 状态字段只能在 EDT 上读写（scrollToBottom/settleOnce 及所有调用方均在 EDT）。
+    /** Pending scroll-positioning task marker — merges multiple scrollToBottom calls to avoid EDT pile-up while streaming. */
+    // The three settle-state fields below may only be read/written on the EDT (scrollToBottom/settleOnce and all callers run on the EDT).
     private var settlePending = false
 
-    /** settleOnce 正在程序化写入滚动位置 — 视口 ChangeListener 据此排除自身滚动，避免误判为用户输入。 */
+    /** settleOnce is programmatically writing the scroll position — the viewport ChangeListener uses this to exclude its own scrolling, avoiding a false user-input detection. */
     private var programmaticScrollInProgress = false
 
-    /** 滚动定位剩余追平次数 — 限制异步 HTML 布局后的嵌套重排上限。 */
+    /** Remaining scroll-settle catch-up count — limits nested re-layouts after asynchronous HTML layout. */
     private var settleBudget = 0
 
-    /** 上一次定位时的滚动条 maximum，用于判断高度是否仍在变化。 */
+    /** The scrollbar maximum at the last positioning, used to determine whether the height is still changing. */
     private var settleLastMaximum = -1
 
     internal fun scrollToBottom() {
-        // 用户已向上滚动查看历史：不强制拉回底部
+        // The user has scrolled up to view history: do not force-scroll back to the bottom
         if (!autoScrollController.followsBottom) return
 
         if (settlePending) {
-            // 已有一个待执行任务：加大追平预算，让它在执行时适配最新高度
+            // A pending task already exists: increase the catch-up budget so it adapts to the latest height when it runs
             settleBudget = 5
             return
         }
@@ -5678,7 +5687,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
         messagesPanel.revalidate()
         messagesScrollPane.validate()
         val vsb = messagesScrollPane.verticalScrollBar
-        // 用户正在拖动滚动条：让用户赢，跳过本次定位；松手后 mouseReleased 会恢复跟随
+        // The user is dragging the scrollbar: let the user win, skip this positioning; mouseReleased resumes following after release
         if (vsb.valueIsAdjusting) return
         programmaticScrollInProgress = true
         try {
@@ -5692,8 +5701,8 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
         // is never left partially below the viewport.
         val maxChanged = vsb.maximum != settleLastMaximum
         settleLastMaximum = vsb.maximum
-        // 流式进行中：下一次冲刷会再次调用 scrollToBottom，无需自行追平；
-        // 仅在流式结束后继续追平到高度稳定。
+        // Streaming in progress: the next flush will call scrollToBottom again, so there is no need to catch up here;
+        // Only continue catching up until the height stabilizes after streaming ends.
         if (chatState.get() !is ChatState.Streaming && maxChanged && settleBudget > 0) {
             settleBudget--
             settlePending = true
@@ -5763,7 +5772,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-        // 计算这条用户消息在 session.messages 中的索引
+        // Compute the index of this user message in session.messages
 
         val session = currentSession()
 
@@ -5789,7 +5798,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-        // 气泡展示时截断代码块为前 20 行（仅 UI 展示，不影响传给 LLM 的完整内容）
+        // When rendering the bubble, truncate code blocks to the first 20 lines (UI display only; the full content sent to the LLM is unaffected)
 
         val displayContent = truncateCodeBlocks(content, maxLines = 20)
 
@@ -5803,17 +5812,17 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
         )
 
-        // 气泡直接加入 messagesPanel（MessageBubble 内部自绘对齐和圆角背景）
+        // Add the bubble directly to messagesPanel (MessageBubble draws its own alignment and rounded background)
 
         messagesPanel.add(bubble, fillWidthConstraints)
 
-        // 消息间距
+        // Message spacing
 
         messagesPanel.add(Box.createVerticalStrut(4), fillWidthConstraints)
 
 
 
-        // Track for nav sidebar (only user messages) — 导航侧栏保留完整内容
+        // Track for nav sidebar (only user messages) — the nav sidebar keeps the full content
 
         userMessages.add(MessageEntry(bubble, content))
 
@@ -5838,7 +5847,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-        // 计算这条用户消息在 session.messages 中的索引
+        // Compute the index of this user message in session.messages
 
         val session = currentSession()
 
@@ -5860,7 +5869,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
 
 
-        // 气泡展示时截断代码块为前 20 行（仅 UI 展示，不影响传给 LLM 的完整内容）
+        // When rendering the bubble, truncate code blocks to the first 20 lines (UI display only; the full content sent to the LLM is unaffected)
 
         val displayContent = truncateCodeBlocks(content, maxLines = 20)
 
@@ -5907,7 +5916,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
         val bubble = MessageBubble(project, MessageBubble.Role.ASSISTANT, content, reasoning = reasoning)
 
-        // 气泡直接加入 messagesPanel
+        // Add the bubble directly to messagesPanel
 
         messagesPanel.add(bubble, fillWidthConstraints)
 
@@ -5940,14 +5949,14 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
      * Create a temporary streaming message bubble.
 
-     * Shows "思考中... ◐" spinning animation until the first token arrives.
+     * Shows a "Thinking... ◐" spinning animation until the first token arrives.
 
      */
 
     internal fun createStreamingArea(bubble: MessageBubble): JBTextArea {
         removeMessagesFiller()
 
-        // 气泡直接加入 messagesPanel
+        // Add the bubble directly to messagesPanel
 
         messagesPanel.add(bubble, fillWidthConstraints)
 
@@ -5969,7 +5978,9 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
             spinnerIndex = (spinnerIndex + 1) % spinnerChars.size
 
-            textArea.text = I18n.tr("chat.thinking") + " " + spinnerChars[spinnerIndex]
+            val stepIdx = (spinnerIndex / 5) % thinkingStepKeys.size
+
+            textArea.text = I18n.tr(thinkingStepKeys[stepIdx]) + " " + spinnerChars[spinnerIndex]
 
         }.apply { start() }
 
@@ -5981,7 +5992,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     /**
 
-     * Create a streaming bubble with a custom initial status text (e.g. "解析中...").
+     * Create a streaming bubble with a custom initial status text (e.g. "Parsing...").
 
      * Used for the image parsing phase before AI streaming begins.
 
@@ -6013,7 +6024,6 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
         }.apply { start() }
 
         return textArea
-
     }
 
 
@@ -6024,7 +6034,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
         val bubble = state.bubble
 
-        // 气泡目前已直接位于 messagesPanel 中（无 padded 包装层）
+        // Bubbles are currently placed directly in messagesPanel (no padded wrapper)
 
         messagesPanel.remove(bubble)
         (bubble.getClientProperty("chat.streaming.spacer") as? Component)?.let(messagesPanel::remove)
@@ -6048,7 +6058,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     // ════════════════════════════════════════════════════════════════
 
-    //  (旧版圆点时间线已移除 — 改用现代气泡卡片布局)
+    //  (The old dotted timeline has been removed — replaced with a modern bubble-card layout)
 
     // ════════════════════════════════════════════════════════════════
 
@@ -6056,7 +6066,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     /**
 
-     * 删除一条用户消息及其对应的 AI 回复，然后重新渲染会话。
+     * Deletes a user message and its corresponding AI reply, then re-renders the conversation.
 
      */
 
@@ -6064,7 +6074,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
         val indicesToRemove = mutableListOf(userMsgIndex)
 
-        // 如果下一条是 AI 回复，一起删除
+        // If the next one is an AI reply, delete it too
 
         val nextIdx = userMsgIndex + 1
 
@@ -6074,13 +6084,13 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
         }
 
-        // 从后往前删，保持索引有效
+        // Delete from the end so indexes stay valid
 
         indicesToRemove.sortedDescending().forEach { session.messages.removeAt(it) }
 
 
 
-        // 重新渲染整个会话
+        // Re-render the whole conversation
 
         messagesPanel.removeAll()
 
@@ -6404,7 +6414,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     // ════════════════════════════════════════════════════════════════
 
-    //  思考推演过程解析 — 从 AI 响应中提取 <thinking> 块与最终答案
+    //  Reasoning-process parsing — extract <thinking> blocks and the final answer from the AI response
 
     // ════════════════════════════════════════════════════════════════
 
@@ -6412,19 +6422,19 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
     /**
 
-     * 解析 AI 响应，提取思考推演过程和最终答案。
+     * Parses the AI response, extracting the reasoning process and the final answer.
 
      *
 
-     * @param response 原始 AI 响应文本
+     * @param response raw AI response text
 
-     * @return Triple(原始响应, 展示内容, 思考推演文本)
+     * @return Triple(raw response, display content, reasoning text)
 
-     *         - first:  原始完整响应
+     *         - first:  raw full response
 
-     *         - second: 最终答案部分（移除 <thinking> 块后的内容）
+     *         - second: final answer part (content after removing <thinking> blocks)
 
-     *         - third:  思考推演文本（<thinking> 块内内容），无 thinking 块时为 null
+     *         - third:  reasoning text (content inside <thinking> blocks), or null when there is no thinking block
 
      */
 
@@ -6438,7 +6448,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
         if (match == null) {
 
-            // 没有 thinking 块 → 整段作为最终答案
+            // No thinking block → treat the whole text as the final answer
 
             return Triple(response, response, null)
 
@@ -6448,7 +6458,7 @@ class ChatPanel(private val project: Project) : JPanel(CardLayout()), Disposable
 
         val thinkingContent = match.groupValues[1].trim()
 
-        // 移除 <thinking> 块，剩余部分作为展示内容
+        // Remove <thinking> blocks; the remainder is the display content
 
         val displayContent = response.replace(thinkingRegex, "").trim()
 

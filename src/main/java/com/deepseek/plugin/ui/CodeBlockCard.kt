@@ -96,8 +96,9 @@ class CodeBlockCard(
         val bg = PluginTheme.color(0xF5F5F5, 0x2B2B2B)
         val fg = PluginTheme.textPrimary()
 
-        // 覆写 viewport 尺寸：JTextArea 默认返回固定几行高，这里改为全部内容高度，
-        // 保证长代码完整展开（外层消息面板负责整体纵向滚动）。
+        // Override the viewport size: JTextArea defaults to a fixed few lines of height,
+        // but here it is set to the full content height so long code expands completely
+        // (the outer message panel handles the overall vertical scrolling).
         val textArea = object : JBTextArea(code) {
             override fun getPreferredScrollableViewportSize(): Dimension {
                 val fm = getFontMetrics(font)
@@ -112,7 +113,7 @@ class CodeBlockCard(
             background = bg
             foreground = fg
             font = JBUI.Fonts.create("Monospaced", JBUI.Fonts.label().size)
-            // 不换行：保持代码原始格式（缩进/对齐），超长行通过横向滚动条左右拉动查看
+            // No wrapping: keep the code's original format (indentation/alignment); very long lines are viewed by scrolling horizontally
             lineWrap = false
             tabSize = 4
             margin = JBUI.insets(4, 10)
@@ -121,8 +122,8 @@ class CodeBlockCard(
             // Allow text selection for copy (isEditable=false still allows selection in JBTextArea)
         }
 
-        // 用滚动面板包裹：横向可左右拉动，竖向恰好全显
-        // 三环锁定高度（preferred/minimum/maximum）= 全部内容高度，防止 BoxLayout 压缩
+        // Wrap in a scroll pane: horizontal scrolling is available, vertical is exactly fully shown
+        // Lock all three heights (preferred/minimum/maximum) to the full content height, preventing BoxLayout from compressing it
         val scrollPane = JBScrollPane(textArea).apply {
             horizontalScrollBarPolicy = JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED
             verticalScrollBarPolicy = JScrollPane.VERTICAL_SCROLLBAR_NEVER
@@ -298,11 +299,11 @@ class CodeBlockCard(
         /**
          * Parse a response string into a list of segments (text blocks and code blocks).
          *
-         * 逐行流式扫描，支持两种 Markdown 围栏：``` 和 ~~~。
-         * - 围栏行：``` 或 ~~~，可选语言标签（须后随换行才算标签）
-         * - 未闭合围栏：宽容处理，从围栏行到结尾视为代码块
-         * - 有语言标签 → 代码块；无语言标签 → 用 [looksLikeCode] 判断，
-         *   不像代码的内容按普通文字处理（避免文字被塞进代码框）
+         * Streams line by line and supports two Markdown fences: ``` and ~~~.
+         * - Fence line: ``` or ~~~, with an optional language tag (it is only a tag when followed by a newline)
+         * - Unclosed fence: handled leniently, the range from the fence line to the end is treated as a code block
+         * - With a language tag → code block; without one → use [looksLikeCode] to decide,
+         *   content that does not look like code is treated as plain text (avoid stuffing text into a code box)
          */
         @JvmStatic
         fun parseResponse(response: String): List<ResponseSegment> {
@@ -339,12 +340,12 @@ class CodeBlockCard(
                     }
                     val code = codeLines.joinToString("\n").trim()
                     if (code.isNotEmpty()) {
-                        // 有语言标签或未闭合围栏（围栏意图明确）→ 代码块；
-                        // 已闭合且无语言标签 → 用 looksLikeCode 判断，不像代码按文字处理
+                        // Has a language tag or an unclosed fence (clear fence intent) → code block;
+                        // Closed and no language tag → use looksLikeCode to decide; content that does not look like code is treated as text
                         if (language.isNotBlank() || !closed || looksLikeCode(code)) {
                             segments.add(ResponseSegment.Code(code, language))
                         } else {
-                            // 无语言标签且不像代码：按普通文字处理（表格/说明文本等）
+                            // No language tag and does not look like code: treat as plain text (tables/description text, etc.)
                             segments.addAll(parseNonCodeText(code))
                         }
                     }
@@ -364,13 +365,13 @@ class CodeBlockCard(
             return segments
         }
 
-        /** 围栏行：``` 或 ~~~，可选语言标签（word/点/加减号），标签后必须到行尾 */
+        /** Fence line: ``` or ~~~, optional language tag (word/dot/plus/minus); the tag must run to end of line. */
         private val FENCE_REGEX = Regex("^\\s*(```|~~~)\\s*([\\w.+\\-]*)\\s*$")
 
         /**
-         * 判断围栏内容是否像代码或流程描述。无语言标签时用于分类：
-         * 1. 代码特征（关键字/分号/花括号/调用）≥2 且非大段中文 → 代码
-         * 2. 流程特征（箭头符号/图语法/步骤词）→ 也进代码框（伪代码、时序图、流程图等）
+         * Determines whether fenced content looks like code or a flow description. Used for classification when there is no language tag:
+         * 1. Code features (keywords/semicolons/braces/calls) ≥ 2 and no large block of Chinese → code
+         * 2. Flow features (arrow symbols/diagram syntax/step words) → also go into a code box (pseudocode, sequence diagrams, flowcharts, etc.)
          */
         private fun looksLikeCode(code: String): Boolean {
             val trimmed = code.trim()
@@ -387,14 +388,14 @@ class CodeBlockCard(
             val hasBraces = trimmed.contains("{") && trimmed.contains("}")
             val hasCall = Regex("\\w+\\([^)]*\\)").containsMatchIn(trimmed)
 
-            // 中文占比（代码通常不含大段中文）
+            // Chinese proportion (code usually has no large blocks of Chinese)
             val chineseCount = trimmed.count { it in '\u4e00'..'\u9fff' }
             val ratio = chineseCount.toDouble() / trimmed.length.coerceAtLeast(1)
 
             val score = listOf(hasStrong, hasSemicolons, hasBraces, hasCall).count { it }
             val isCode = score >= 2 && ratio < 0.3
 
-            // ── 流程特征：伪代码 / 时序图 / 流程图 / 步骤序列 → 也进代码框 ──
+            // ── Flow features: pseudocode / sequence diagram / flowchart / step sequence → also go into a code box ──
             val arrowLines = lines.count { line ->
                 line.contains("->") || line.contains("->>") || line.contains("=>") ||
                     line.contains("→") || line.contains("←") || line.contains("-->") ||
@@ -402,13 +403,13 @@ class CodeBlockCard(
             }
             val flowKeywords = listOf(
                 "flowchart", "graph TD", "sequenceDiagram", "stateDiagram", "classDiagram",
-                "participant", "erDiagram", "步骤", "Step ", "第\\d+步"
+                "participant", "erDiagram", "Step", "Step ", "Step \\d+"
             )
             val hasFlowKeyword = flowKeywords.any { kw ->
-                if (kw.startsWith("第")) Regex("第\\s*\\d+\\s*步").containsMatchIn(trimmed)
+                if (kw.startsWith("Step \\d")) Regex("Step\\s*\\d+").containsMatchIn(trimmed)
                 else trimmed.contains(kw)
             }
-            // 伪代码流程控制关键字：强关键字单独出现即判定；弱关键字需 ≥2 个（防英文句子误判）
+            // Pseudocode flow-control keywords: a single strong keyword is enough; weak keywords need ≥2 (to avoid misclassifying English sentences)
             val strongPseudo = listOf(
                 "while ", "loop", "repeat ", "switch ", "end if", "endfor", "endwhile",
                 "for each", "begin ", "until ", "then "
@@ -417,7 +418,7 @@ class CodeBlockCard(
             val hasStrongPseudo = strongPseudo.any { trimmed.contains(it, ignoreCase = true) }
             val weakCount = weakPseudo.count { trimmed.contains(it, ignoreCase = true) }
             val hasPseudo = hasStrongPseudo || weakCount >= 2
-            // 2 行以上含箭头，或含图语法/步骤关键词，或伪代码结构 → 视为流程
+            // Two or more lines with arrows, or containing diagram syntax/step keywords, or pseudocode structure → treated as flow
             val isFlow = (arrowLines >= 1 && lines.size >= 2) || hasFlowKeyword || hasPseudo
 
             return isCode || isFlow

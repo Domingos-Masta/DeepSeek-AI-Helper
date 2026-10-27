@@ -14,9 +14,9 @@ import java.util.function.Consumer
 import javax.swing.JLabel
 
 /**
- * 状态栏 Widget — 显示 AI 代码补全当前状态（空闲/生成中/就绪/出错）。
+ * Status bar widget — displays the current AI code completion state (idle/generating/ready/error).
  *
- * 点击可切换补全启用/禁用。
+ * Clicking toggles completion on/off.
  */
 class CompletionStatusBarWidgetFactory : com.intellij.openapi.wm.StatusBarWidgetFactory {
 
@@ -38,7 +38,7 @@ class CompletionStatusBarWidgetFactory : com.intellij.openapi.wm.StatusBarWidget
 }
 
 /**
- * 状态栏组件 — JLabel 实现 StatusBarWidget，通过 TextPresentation 提供文字渲染。
+ * Status bar component — a JLabel implementing StatusBarWidget, providing text rendering via TextPresentation.
  */
 class CompletionStatusWidget : JLabel(), StatusBarWidget {
 

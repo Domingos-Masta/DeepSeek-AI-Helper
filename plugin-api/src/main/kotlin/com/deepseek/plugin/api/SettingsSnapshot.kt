@@ -1,8 +1,8 @@
 package com.deepseek.plugin.api
 
 /**
- * Provider 设置快照 — [com.deepseek.plugin.settings.DeepSeekSettings] 中与 Provider 相关的字段的子集。
- * 纯数据对象，无 IntelliJ SDK 依赖，可在 api/backend/frontend 间安全传递。
+ * Provider settings snapshot — a subset of the Provider-related fields in [com.deepseek.plugin.settings.DeepSeekSettings].
+ * Pure data object with no IntelliJ SDK dependency, safely transferable between api/backend/frontend.
  */
 data class SettingsSnapshot(
     val provider: String,
@@ -28,7 +28,7 @@ data class SettingsSnapshot(
     val codexBaseUrl: String,
 )
 
-/** 根据 Provider 类型从快照中提取 API Key */
+/** Extracts the API Key from the snapshot based on the Provider type */
 fun SettingsSnapshot.resolveApiKey(): String = when (provider) {
     "deepseek" -> apiKey
     "agnes" -> agnesApiKey
@@ -40,7 +40,7 @@ fun SettingsSnapshot.resolveApiKey(): String = when (provider) {
     else -> apiKey
 }
 
-/** 根据 Provider 类型从快照中提取 baseUrl */
+/** Extracts the baseUrl from the snapshot based on the Provider type */
 fun SettingsSnapshot.resolveBaseUrl(): String = when (provider) {
     "deepseek" -> "https://api.deepseek.com/v1"
     "agnes" -> agnesBaseUrl.trimEnd('/')
@@ -60,7 +60,7 @@ fun SettingsSnapshot.resolveBaseUrl(): String = when (provider) {
     else -> "https://api.deepseek.com/v1"
 }
 
-/** 根据 Provider 类型从快照中提取 model */
+/** Extracts the model from the snapshot based on the Provider type */
 fun SettingsSnapshot.resolveModel(): String = when (provider) {
     "deepseek" -> model
     "agnes" -> agnesModel.ifBlank { "agnes-2.5-flash" }
@@ -75,10 +75,10 @@ fun SettingsSnapshot.resolveModel(): String = when (provider) {
 // ==================== Claude (Anthropic) ====================
 
 /**
- * Claude API key 运行时解析链（与 [LlmProvider] 的 Anthropic 实现保持一致）：
- *  1. 设置面板显式填写的 anthropicApiKey
- *  2. 环境变量 ANTHROPIC_API_KEY（API key 计费）
- *  3. 环境变量 ANTHROPIC_AUTH_TOKEN（Claude 订阅 OAuth 登录态，Bearer 形式）
+ * Claude API key runtime resolution chain (consistent with the Anthropic implementation in [LlmProvider]):
+ *  1. anthropicApiKey explicitly entered in the settings panel
+ *  2. Environment variable ANTHROPIC_API_KEY (API key billing)
+ *  3. Environment variable ANTHROPIC_AUTH_TOKEN (Claude subscription OAuth login state, Bearer form)
  */
 fun SettingsSnapshot.resolveAnthropicApiKey(): String {
     if (anthropicApiKey.isNotBlank()) return anthropicApiKey
@@ -87,7 +87,7 @@ fun SettingsSnapshot.resolveAnthropicApiKey(): String {
     return ""
 }
 
-/** Claude API key 当前生效来源：settings / env / none */
+/** Currently active source of the Claude API key: settings / env / none */
 fun SettingsSnapshot.anthropicKeySource(): String = when {
     anthropicApiKey.isNotBlank() -> "settings"
     !System.getenv("ANTHROPIC_API_KEY").isNullOrBlank() -> "env"
@@ -98,10 +98,10 @@ fun SettingsSnapshot.anthropicKeySource(): String = when {
 // ==================== Codex (OpenAI) ====================
 
 /**
- * Codex API key 运行时解析链（与 [LlmProvider] 的 Codex 实现保持一致）：
- *  1. 设置面板显式填写的 codexApiKey
- *  2. 环境变量 OPENAI_API_KEY（官方 API key）
- *  3. 环境变量 CODEX_API_KEY（cc-switch / 自定义 model_provider 的 env_key 约定）
+ * Codex API key runtime resolution chain (consistent with the Codex implementation in [LlmProvider]):
+ *  1. codexApiKey explicitly entered in the settings panel
+ *  2. Environment variable OPENAI_API_KEY (official API key)
+ *  3. Environment variable CODEX_API_KEY (the env_key convention for cc-switch / custom model_provider)
  */
 fun SettingsSnapshot.resolveCodexApiKey(): String {
     if (codexApiKey.isNotBlank()) return codexApiKey
@@ -110,7 +110,7 @@ fun SettingsSnapshot.resolveCodexApiKey(): String {
     return ""
 }
 
-/** Codex API key 当前生效来源：settings / env / none */
+/** Currently active source of the Codex API key: settings / env / none */
 fun SettingsSnapshot.codexKeySource(): String = when {
     codexApiKey.isNotBlank() -> "settings"
     !System.getenv("OPENAI_API_KEY").isNullOrBlank() -> "env"

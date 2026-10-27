@@ -7,9 +7,9 @@ import com.intellij.openapi.project.Project
 import java.io.File
 
 /**
- * CLI Agent 变更追踪：执行前快照 → 执行后对比 → 写入 [ChangeManagementStore]（可回滚）。
+ * CLI Agent change tracking: snapshot before execution → compare after execution → write to [ChangeManagementStore] (rollback-capable).
  *
- * 只追踪文本源码文件（按扩展名白名单），排除构建产物与 VCS/IDE 目录。
+ * Only tracks text source files (by extension whitelist), excluding build artifacts and VCS/IDE directories.
  */
 object CliChangeTracker {
 
@@ -25,8 +25,8 @@ object CliChangeTracker {
     )
 
     /**
-     * 对项目根目录下的文本源码文件做内容快照。
-     * @return 相对路径(正斜杠) → 文件内容
+     * Takes a content snapshot of text source files under the project root.
+     * @return relative path (forward slashes) → file content
      */
     fun snapshot(projectDir: File): Map<String, ByteArray> {
         val map = LinkedHashMap<String, ByteArray>()
@@ -52,8 +52,8 @@ object CliChangeTracker {
     }
 
     /**
-     * 对比前后快照，将变更写入 [ChangeManagementStore]。
-     * @return 记录的文件变更数（0 = 无变化）
+     * Compares the before/after snapshots and writes changes to [ChangeManagementStore].
+     * @return number of recorded file changes (0 = no changes)
      */
     fun recordChanges(
         project: Project,
@@ -71,7 +71,7 @@ object CliChangeTracker {
                     changes.add(FileChangeInfo(key, ByteArray(0), isNew = true))
                 b != null && a != null && !b.contentEquals(a) ->
                     changes.add(FileChangeInfo(key, b))
-                // 被 CLI 删除的文件不回滚（ChangeManagementStore 不支持删除恢复）
+                // Files deleted by the CLI are not rolled back (ChangeManagementStore does not support delete recovery)
             }
         }
         if (changes.isEmpty()) return 0

@@ -5,10 +5,7 @@ import javax.swing.Icon
 
 object PluginIcons {
     @JvmField
-    val TOOLWINDOW: Icon = IconLoader.getIcon("/icons/robot.png", PluginIcons::class.java)
+    val TOOLWINDOW: Icon = IconLoader.getIcon("/icons/toolwindow.svg", PluginIcons::class.java)
     @JvmField
-    val ACTION: Icon = IconLoader.getIcon("/icons/robot.png", PluginIcons::class.java)
-
-    //1+1=
-
+    val ACTION: Icon = IconLoader.getIcon("/icons/action.svg", PluginIcons::class.java)
 }

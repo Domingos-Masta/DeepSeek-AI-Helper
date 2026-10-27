@@ -1,8 +1,8 @@
 package com.deepseek.plugin.context
 
 /**
- * 将代码文件按行切分为块，每块 [maxLines] 行，前后保留 [overlap] 行重叠
- * 避免方法/逻辑在边界处被硬切断，影响检索和阅读
+ * Splits a code file into chunks of [maxLines] lines, keeping [overlap] lines of overlap before and after
+ * so methods/logic are not cut abruptly at boundaries, which would hurt retrieval and readability
  */
 class ChunkSplitter(
     private val maxLines: Int = 60,
@@ -20,11 +20,11 @@ class ChunkSplitter(
         while (start < lines.size) {
             val actualEnd = minOf(start + maxLines, lines.size)
 
-            // 实际 chunk 范围
+            // Actual chunk range
             val rangeStart = start
             val rangeEnd = actualEnd
 
-            // 存储时带前后重叠上下文
+            // Store with preceding/following overlap context
             val storeStart = maxOf(0, start - overlap)
             val storeEnd = minOf(actualEnd + overlap, lines.size)
             val chunkLines = lines.subList(storeStart, storeEnd)
@@ -48,12 +48,12 @@ class ChunkSplitter(
 }
 
 /**
- * 代码文件中的一个块
- * @param id          唯一标识，格式: "相对路径#chunk序号"
- * @param filePath    相对于源码根目录的路径，如 "com/example/UserService.java"
- * @param startLine   块在文件中的起始行号（0-based）
- * @param endLine     块在文件中的结束行号（0-based）
- * @param content     块代码内容（含前后重叠行，便于阅读上下文）
+ * A chunk in a code file
+ * @param id          Unique identifier, format: "relativePath#chunkIndex"
+ * @param filePath    Path relative to the source root, e.g. "com/example/UserService.java"
+ * @param startLine   Starting line number of the chunk in the file (0-based)
+ * @param endLine     Ending line number of the chunk in the file (0-based)
+ * @param content     Chunk code content (includes preceding/following overlap lines for easier context)
  */
 data class CodeChunk(
     val id: String,

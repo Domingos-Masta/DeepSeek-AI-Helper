@@ -7,23 +7,23 @@ import kotlin.concurrent.read
 import kotlin.concurrent.write
 
 /**
- * 补全结果 LRU 缓存。
+ * LRU cache for completion results.
  *
- * 借鉴 deepseek-copilot TriggerCenter 的缓存策略。
- * 按 (filePath, line, column±5, prefixNormalized) 作为缓存键，
- * 当用户在同一位置附近再次触发补全时，直接返回缓存结果，跳过 API 调用。
+ * Inspired by the caching strategy of deepseek-copilot's TriggerCenter.
+ * Uses (filePath, line, column±5, prefixNormalized) as the cache key.
+ * When the user triggers completion near the same position again, the cached result is returned directly, skipping the API call.
  *
- * 线程安全：使用 ReentrantReadWriteLock 保护并发访问。
+ * Thread safety: a ReentrantReadWriteLock protects concurrent access.
  */
 class CompletionCache(private val maxSize: Int = 20) {
 
     companion object {
         private val LOG = Logger.getInstance(CompletionCache::class.java)
 
-        /** 位置匹配窗口大小（字符数） */
+        /** Position matching window size (in characters) */
         private const val POSITION_WINDOW = 5
 
-        /** 全局单例 */
+        /** Global singleton */
         @Volatile
         private var _instance: CompletionCache? = null
 
@@ -38,7 +38,7 @@ class CompletionCache(private val maxSize: Int = 20) {
             return _instance!!
         }
 
-        /** 由应用设置更新缓存大小 */
+        /** Updates the cache size from application settings */
         fun resetInstance(maxSize: Int) {
             synchronized(this) {
                 _instance = CompletionCache(maxSize)
@@ -46,25 +46,25 @@ class CompletionCache(private val maxSize: Int = 20) {
         }
     }
 
-    /** 缓存键 */
+    /** Cache key */
     data class CacheKey(
         val filePath: String,
         val line: Int,
         val column: Int,
-        /** 归一化的前缀文本（前 50 个字符） */
+        /** Normalized prefix text (first 50 characters) */
         val prefixNormalized: String
     )
 
-    /** 缓存条目 */
+    /** Cache entry */
     data class CacheEntry(
         val key: CacheKey,
         val suggestion: String,
-        /** 缓存命中次数 */
+        /** Number of cache hits */
         var hitCount: Int = 0,
         val timestamp: Long = System.currentTimeMillis()
     )
 
-    /** 底层 LRU 缓存 (access-order = true) */
+    /** Underlying LRU cache (access-order = true) */
     private val cache = object : LinkedHashMap<CacheKey, CacheEntry>(16, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<CacheKey, CacheEntry>?): Boolean {
             return size > maxSize
@@ -73,16 +73,16 @@ class CompletionCache(private val maxSize: Int = 20) {
 
     private val lock = ReentrantReadWriteLock()
 
-    // ==================== 对外 API ====================
+    // ==================== Public API ====================
 
     /**
-     * 根据上下文查找缓存。
+     * Looks up the cache based on the context.
      *
-     * @param filePath 文件路径
-     * @param line 光标行号（0-based）
-     * @param column 光标列号（0-based）
-     * @param prefix 光标前的文本
-     * @return 缓存的补全文本，未命中则返回 null
+     * @param filePath the file path
+     * @param line the caret line number (0-based)
+     * @param column the caret column number (0-based)
+     * @param prefix the text before the caret
+     * @return the cached completion text, or null on a miss
      */
     fun get(filePath: String, line: Int, column: Int, prefix: String): String? {
         if (maxSize <= 0) return null
@@ -90,7 +90,7 @@ class CompletionCache(private val maxSize: Int = 20) {
         val normalizedPrefix = normalizePrefix(prefix)
 
         return lock.read<String?> {
-            // 精确匹配
+            // Exact match
             val exactKey = CacheKey(filePath, line, column, normalizedPrefix)
             val exactEntry = cache[exactKey]
             if (exactEntry != null) {
@@ -99,14 +99,14 @@ class CompletionCache(private val maxSize: Int = 20) {
                 return@read exactEntry.suggestion
             }
 
-            // 近似匹配：同一行，列 ±POSITION_WINDOW
+            // Approximate match: same line, column within ±POSITION_WINDOW
             val candidates = cache.values.filter { entry ->
                 entry.key.filePath == filePath &&
                     entry.key.line == line &&
                     kotlin.math.abs(entry.key.column - column) <= POSITION_WINDOW
             }
 
-            // 在有近似匹配的情况下，尝试模糊前缀匹配
+            // When approximate matches exist, try fuzzy prefix matching
             for (entry in candidates) {
                 if (normalizedPrefix.startsWith(entry.key.prefixNormalized) ||
                     entry.key.prefixNormalized.startsWith(normalizedPrefix)
@@ -123,7 +123,7 @@ class CompletionCache(private val maxSize: Int = 20) {
     }
 
     /**
-     * 记录补全结果到缓存。
+     * Records a completion result into the cache.
      */
     fun put(filePath: String, line: Int, column: Int, prefix: String, suggestion: String) {
         if (maxSize <= 0) return
@@ -139,22 +139,22 @@ class CompletionCache(private val maxSize: Int = 20) {
         }
     }
 
-    /** 清空缓存 */
+    /** Clears the cache */
     fun clear() {
         lock.write {
             cache.clear()
         }
     }
 
-    /** 当前缓存大小 */
+    /** Current cache size */
     fun size(): Int = lock.read { cache.size }
 
-    /** 缓存命中总次数 */
+    /** Total number of cache hits */
     fun totalHits(): Int = lock.read { cache.values.sumOf { it.hitCount } }
 
-    // ==================== 辅助方法 ====================
+    // ==================== Helper methods ====================
 
-    /** 归一化前缀文本：取前 50 个字符并去除多余的空白 */
+    /** Normalizes the prefix text: takes the first 50 characters and removes excess whitespace */
     private fun normalizePrefix(prefix: String): String {
         return prefix.trimEnd().take(50).replace(Regex("\\s+"), " ")
     }

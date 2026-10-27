@@ -5,9 +5,9 @@ import java.util.ServiceLoader
 import com.deepseek.plugin.settings.readCodexConfigModel
 
 /**
- * 供应商注册表 — 管理所有 LLM 供应商实例。
+ * Provider registry — manages all LLM provider instances.
  *
- * 添加新供应商：编写 `class XxxProvider : LlmProvider`，然后一行：
+ * To add a new provider: write `class XxxProvider : LlmProvider`, then one line:
  *   `LlmProviderRegistry.register(XxxProvider())`
  */
 object LlmProviderRegistry {
@@ -66,9 +66,9 @@ object LlmProviderRegistry {
     }
 }
 
-// ============== 实现 ==============
+// ============== Implementation ==============
 
-/** DeepSeek 官方 API */
+/** DeepSeek official API */
 class DeepSeekProvider : LlmProvider {
     override val id = "deepseek"
     override val displayName = "DeepSeek"
@@ -99,7 +99,7 @@ class NvidiaProvider : LlmProvider {
     override fun model(settings: SettingsSnapshot): String = settings.nvidiaModel.ifBlank { "z-ai/glm-5.2" }
 }
 
-/** OpenRouter API — 聚合多模型 */
+/** OpenRouter API — aggregates multiple models */
 class OpenRouterProvider : LlmProvider {
     override val id = "openrouter"
     override val displayName = "OpenRouter"
@@ -109,7 +109,7 @@ class OpenRouterProvider : LlmProvider {
     override fun model(settings: SettingsSnapshot): String = settings.openrouterModel.ifBlank { "inclusionai/ling-3.0-flash:free" }
 }
 
-/** 智谱 AI GLM */
+/** Zhipu AI GLM */
 class ZhipuProvider : LlmProvider {
     override val id = "zhipu"
     override val displayName = "BigModel"
@@ -120,11 +120,11 @@ class ZhipuProvider : LlmProvider {
 }
 
 /**
- * Claude (Anthropic) — 走 Anthropic 官方 OpenAI 兼容端点（/v1/chat/completions，Bearer 鉴权）。
+ * Claude (Anthropic) — uses the Anthropic official OpenAI-compatible endpoint (/v1/chat/completions, Bearer authentication).
  *
- * API key 解析链见 [SettingsSnapshot.resolveAnthropicApiKey]（设置面板 → ANTHROPIC_API_KEY 环境变量
- * → ~/.claude/settings.json → ~/.claude/.credentials.json OAuth token，后者仅限官方端点）。
- * baseUrl 优先取环境变量 ANTHROPIC_BASE_URL（企业代理/中转场景）。
+ * For the API key resolution chain see [SettingsSnapshot.resolveAnthropicApiKey] (settings panel → ANTHROPIC_API_KEY environment variable
+ * → ~/.claude/settings.json → ~/.claude/.credentials.json OAuth token; the latter is for the official endpoint only).
+ * baseUrl prefers the ANTHROPIC_BASE_URL environment variable (enterprise proxy/relay scenarios).
  */
 class AnthropicProvider : LlmProvider {
     override val id = "anthropic"
@@ -151,15 +151,15 @@ class AnthropicProvider : LlmProvider {
         settings.anthropicModel.ifBlank { "claude-sonnet-4-5" }
 }
 
-/** Claude API key 当前生效来源（委托 [SettingsSnapshot.anthropicKeySource]） */
+/** Currently effective source of the Claude API key (delegates to [SettingsSnapshot.anthropicKeySource]) */
 fun detectAnthropicKeySource(settings: SettingsSnapshot): String = settings.anthropicKeySource()
 
 /**
- * Codex (OpenAI) — 复用本地 Codex CLI 登录态，走 OpenAI 兼容 chat/completions 端点。
+ * Codex (OpenAI) — reuses the local Codex CLI login state, using the OpenAI-compatible chat/completions endpoint.
  *
- * API key 解析链见 [SettingsSnapshot.resolveCodexApiKey]（设置面板 → OPENAI_API_KEY 环境变量
- * → ~/.codex/auth.json 的 OPENAI_API_KEY）。baseUrl 优先取 OPENAI_BASE_URL 环境变量；
- * model 未设置时自动读取 ~/.codex/config.toml 的 model 配置。
+ * For the API key resolution chain see [SettingsSnapshot.resolveCodexApiKey] (settings panel → OPENAI_API_KEY environment variable
+ * → OPENAI_API_KEY in ~/.codex/auth.json). baseUrl prefers the OPENAI_BASE_URL environment variable;
+ * when model is not set, the model config is read automatically from ~/.codex/config.toml.
  */
 class CodexProvider : LlmProvider {
     override val id = "codex"
@@ -193,6 +193,6 @@ class CodexProvider : LlmProvider {
         settings.codexModel.ifBlank { readCodexConfigModel() ?: "gpt-5.2-codex" }
 }
 
-/** Codex API key 当前生效来源（委托 [SettingsSnapshot.codexKeySource]） */
+/** Currently effective source of the Codex API key (delegates to [SettingsSnapshot.codexKeySource]) */
 fun detectCodexKeySource(settings: SettingsSnapshot): String = settings.codexKeySource()
 

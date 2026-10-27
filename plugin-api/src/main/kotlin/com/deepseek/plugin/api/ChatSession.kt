@@ -1,7 +1,7 @@
 package com.deepseek.plugin.api
 
 /**
- * 聊天会话 — 表示一次聊天会话的元数据和消息列表。
+ * Chat session — represents the metadata and message list of a chat session.
  */
 data class ChatSession(
     val name: String,

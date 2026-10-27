@@ -12,43 +12,43 @@ import org.apache.lucene.search.TermQuery
 import org.apache.lucene.search.TopDocs
 
 /**
- * BM25 检索入口（文本/文档专用）。
- * 接收用户自然语言问题，从 RagIndexer 的 Lucene 索引中召回最相关的文档文本块，
- * 按文件分组去重后格式化为上下文文本。
+ * BM25 retrieval entry point (for text/document only).
+ * Takes a user's natural-language question, recalls the most relevant document text chunks from RagIndexer's Lucene index,
+ * then groups them by file, deduplicates, and formats them into context text.
  *
- * 注意：代码文件的搜索已由 AgenticSearch 替代，请使用 com.deepseek.plugin.search.AgenticSearch。
+ * Note: code file search has been superseded by AgenticSearch; use com.deepseek.plugin.search.AgenticSearch.
  */
 class RagRetriever(private val project: Project) {
 
     private val indexer = RagIndexer(project)
     private val retrieverLock = Any()
 
-    // 单个块最大字符数（防止超长块撑爆上下文）
+    // Maximum characters per chunk (prevents oversized chunks from overflowing the context)
     private val maxChunkChars = 2000
 
     /**
-     * 检索入口。
-     * @param queryText 用户原始问题
-     * @param topN      返回最多的 chunk 数量（默认 8）
-     * @return          格式化后的上下文字符串，检索不到时返回空字符串
+     * Retrieval entry point.
+     * @param queryText The user's original question
+     * @param topN      Maximum number of chunks to return (default 8)
+     * @return          Formatted context string; empty string when nothing is retrieved
      */
     fun retrieve(queryText: String, topN: Int = 8): String {
-        // 1. 确保索引最新
+        // 1. Ensure the index is up to date
         indexer.ensureFresh()
 
-        // 2. BM25 检索
+        // 2. BM25 retrieval
         val results = search(queryText, topN * 2)
         if (results.isEmpty()) return ""
 
-        // 3. 后处理：按文件分组 + 按行号排序 + 截断
+        // 3. Post-processing: group by file + sort by line number + truncate
         val processed = postProcess(results, topN)
 
-        // 4. 格式化为上下文文本
+        // 4. Format into context text
         return formatContext(processed)
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  Lucene 检索（手动构建布尔查询，无需 QueryParser 依赖）
+    //  Lucene retrieval (manually builds a boolean query, no QueryParser dependency)
     // ════════════════════════════════════════════════════════════════
 
     private fun search(queryText: String, topN: Int): List<ScoredChunk> {
@@ -57,7 +57,7 @@ class RagRetriever(private val project: Project) {
             val searcher = IndexSearcher(reader)
 
             try {
-                // 对用户问题做 Analyzer 分词，每个 token 转为 TermQuery
+                // Tokenize the user question with the Analyzer; turn each token into a TermQuery
                 val terms = tokenize(queryText)
                 if (terms.isEmpty()) return emptyList()
 
@@ -91,8 +91,8 @@ class RagRetriever(private val project: Project) {
     }
 
     /**
-     * 使用 StandardAnalyzer 将文本切分为 token。
-     * 过滤掉停用词、过短词（<2字符）和纯数字词。
+     * Splits text into tokens using StandardAnalyzer.
+     * Filters out stop words, words that are too short (<2 chars), and purely numeric words.
      */
     private fun tokenize(text: String): List<String> {
         val tokens = mutableListOf<String>()
@@ -113,7 +113,7 @@ class RagRetriever(private val project: Project) {
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  后处理 — 去重 + 按文件分组 + 按行号排序 + token 预算控制
+    //  Post-processing — dedupe + group by file + sort by line number + token budget control
     // ════════════════════════════════════════════════════════════════
 
     private data class ScoredChunk(
@@ -122,14 +122,14 @@ class RagRetriever(private val project: Project) {
     )
 
     private fun postProcess(results: List<ScoredChunk>, maxChunks: Int): List<CodeChunk> {
-        // 按文件分组，组内按行号排序
+        // Group by file, and within each group sort by line number
         val grouped = results.groupBy { it.chunk.filePath }
             .mapValues { (_, chunks) ->
                 chunks.sortedBy { it.chunk.startLine }
                     .distinctBy { "${it.chunk.startLine}-${it.chunk.endLine}" }
             }
 
-        // 按文件最高分排序，取 top maxChunks 个 chunk
+        // Sort by each file's highest score and take the top maxChunks chunks
         val fileBestScore = grouped.mapValues { (_, chunks) ->
             chunks.maxOfOrNull { it.score } ?: 0f
         }
@@ -154,30 +154,30 @@ class RagRetriever(private val project: Project) {
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  格式化为上下文字符串
+    //  Format into a context string
     // ════════════════════════════════════════════════════════════════
 
     private fun formatContext(chunks: List<CodeChunk>): String {
         if (chunks.isEmpty()) return ""
 
         val sb = StringBuilder()
-        // 按文件分组再输出，避免同一文件重复出现文件头
+        // Group by file before output, to avoid repeating the file header for the same file
         val byFile = chunks.groupBy { it.filePath }
 
-        sb.appendLine("以下是项目代码中与当前问题相关的上下文：\n")
+        sb.appendLine("Below is the project code context related to the current question:\n")
 
         for ((filePath, fileChunks) in byFile) {
             val sorted = fileChunks.sortedBy { it.startLine }
             sb.appendLine("📄 `$filePath`:")
 
             for (chunk in sorted) {
-                val lineRange = "L${chunk.startLine + 1}-L${chunk.endLine + 1}" // 转 1-based
+                val lineRange = "L${chunk.startLine + 1}-L${chunk.endLine + 1}" // convert to 1-based
                 sb.appendLine("   --- $lineRange ---")
 
                 val content = chunk.content
                 if (content.length > maxChunkChars) {
                     sb.appendLine(content.take(maxChunkChars))
-                    sb.appendLine("   // ... (剩余 ${content.length - maxChunkChars} 字符)")
+                    sb.appendLine("   // ... (${content.length - maxChunkChars} characters remaining)")
                 } else {
                     val lang = detectLanguage(filePath)
                     if (lang != null) sb.appendLine("```$lang") else sb.appendLine("```")

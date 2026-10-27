@@ -25,24 +25,24 @@ sealed class ChatError(
 
     /** HTTP 429 or server-side throttling. */
     data class RateLimited(
-        override val userMessage: String = "请求过于频繁，请稍后再试",
+        override val userMessage: String = "Too many requests, please try again later",
         val retryAfterMs: Long = 60_000L,
         override val cause: Throwable? = null
     ) : ChatError(userMessage, cause)
 
     /** The stream ended before a complete response was received. */
     data class IncompleteStream(
-        override val userMessage: String = "响应不完整，请重试",
+        override val userMessage: String = "Incomplete response, please try again",
         val partialText: String = "",
         override val cause: Throwable? = null
     ) : ChatError(userMessage, cause)
 
     /** The response was cancelled by the user. */
-    data object Cancelled : ChatError("已取消")
+    data object Cancelled : ChatError("Cancelled")
 
     /** The response was malformed and could not be parsed. */
     data class MalformedResponse(
-        override val userMessage: String = "模型返回了无法解析的响应",
+        override val userMessage: String = "The model returned an unparseable response",
         override val cause: Throwable? = null
     ) : ChatError(userMessage, cause)
 
@@ -54,7 +54,7 @@ sealed class ChatError(
 
     /** Fallback for unexpected failures. */
     data class Unknown(
-        override val userMessage: String = "发生未知错误",
+        override val userMessage: String = "An unknown error occurred",
         override val cause: Throwable? = null
     ) : ChatError(userMessage, cause)
 
@@ -68,7 +68,7 @@ sealed class ChatError(
 }
 
 /** Maps a [Throwable] into a [ChatError] using the plugin exception hierarchy. */
-fun Throwable.toChatError(userMessage: String = this.message ?: "操作失败"): ChatError = when (this) {
+fun Throwable.toChatError(userMessage: String = this.message ?: "Operation failed"): ChatError = when (this) {
     is ApiException -> ChatError.Network(
         userMessage = userMessage,
         httpCode = httpCode,

@@ -9,33 +9,36 @@ import com.intellij.util.ui.UIUtil
 import java.awt.Color
 
 /**
- * 插件独立主题模式。
+ * Independent theme mode for the plugin.
  */
 enum class PluginThemeMode {
-    /** 跟随 IDE 全局主题（默认） */
+    /** Follow the global IDE theme (default). */
     FOLLOW,
-    /** 固定深色（只影响插件 UI，不动 IDE 全局主题） */
+    /** Fixed dark (affects only plugin UI, not the global IDE theme). */
     DARK,
-    /** 固定浅色（只影响插件 UI，不动 IDE 全局主题） */
+    /** Fixed light (affects only plugin UI, not the global IDE theme). */
     LIGHT
 }
 
 /**
- * 插件独立主题色板。
+ * Independent theme palette for the plugin.
  *
- * 插件的 UI 颜色统一通过 [color] 获取，由 [mode] 决定取浅色/深色：
- * - FOLLOW：委托给 [JBColor]（跟随 IDE 全局主题）；且**监听 IDE 主题变更**，
- *   IDE 切换主题时广播 [I18nTopics.THEME_CHANGED]，插件 UI 即时跟随刷新
- * - DARK/LIGHT：固定使用插件自己的配色，**不随 IDE 变化，也不影响 IDE 全局主题**
+ * Plugin UI colors are obtained uniformly through [color], with [mode] deciding
+ * whether to use the light or dark palette:
+ * - FOLLOW: delegates to [JBColor] (follows the global IDE theme); it also
+ *   **listens for IDE theme changes** and broadcasts [I18nTopics.THEME_CHANGED]
+ *   when the IDE switches themes, so the plugin UI refreshes immediately
+ * - DARK/LIGHT: always uses the plugin's own palette — it neither follows IDE
+ *   changes nor affects the global IDE theme
  *
- * 主题体系相对独立：既能跟随 IDE，也能独立设置。
+ * The theme system is relatively independent: it can follow the IDE or be set on its own.
  */
 object PluginTheme {
 
     @Volatile
     private var listenerInitialized = false
 
-    /** 当前主题模式（从持久化设置读取） */
+    /** Current theme mode (read from persisted settings). */
     var mode: PluginThemeMode
         get() = when (DeepSeekSettings.instance.pluginTheme) {
             "dark" -> PluginThemeMode.DARK
@@ -50,7 +53,7 @@ object PluginTheme {
             }
         }
 
-    /** 是否当前处于深色配色。 */
+    /** Whether the current palette is dark. */
     fun isDark(): Boolean = when (mode) {
         PluginThemeMode.DARK -> true
         PluginThemeMode.LIGHT -> false
@@ -58,8 +61,8 @@ object PluginTheme {
     }
 
     /**
-     * 按当前主题模式返回颜色：浅色主题用 [light]，深色主题用 [dark]。
-     * FOLLOW 模式下等价于 [JBColor]（浅色/深色随 IDE 切换）。
+     * Returns a color for the current theme mode: [light] for the light theme, [dark] for the dark theme.
+     * In FOLLOW mode this is equivalent to [JBColor] (light/dark follows IDE switching).
      */
     fun color(light: Color, dark: Color): Color = when (mode) {
         PluginThemeMode.DARK -> dark
@@ -67,37 +70,37 @@ object PluginTheme {
         PluginThemeMode.FOLLOW -> JBColor(light, dark)
     }
 
-    /** int RGB 版本。 */
+    /** int RGB overload. */
     fun color(lightRgb: Int, darkRgb: Int): Color = color(Color(lightRgb), Color(darkRgb))
 
     // ════════════════════════════════════════════════════════════════
-    //  语义色板（遵循 UI 强制渲染规范：浅色/暗黑双主题）
-    //  浅色：背景#FFFFFF 标题#111111 正文#262626 边框#D0D0D0
-    //  深色：背景#2B2B2B 标题#F2F2F2 正文#E3E3E3 边框#555555
+    //  Semantic palette (following the mandatory UI rendering spec: light/dark dual theme)
+    //  Light: background #FFFFFF  heading #111111  body #262626  border #D0D0D0
+    //  Dark:  background #2B2B2B  heading #F2F2F2  body #E3E3E3  border #555555
     // ════════════════════════════════════════════════════════════════
 
-    /** 消息背景：浅色 #FFFFFF / 深色 #2B2B2B */
+    /** Message background: light #FFFFFF / dark #2B2B2B. */
     fun background(): Color = color(0xFFFFFF, 0x2B2B2B)
 
-    /** 边框：浅色 #D0D0D0 / 深色 #555555 */
+    /** Border: light #D0D0D0 / dark #555555. */
     fun border(): Color = color(0xD0D0D0, 0x555555)
 
-    /** 正文：浅色 #111111 / 深色 #F2F2F2（与标题同级，主次靠加粗区分，正文绝对清晰） */
+    /** Body text: light #111111 / dark #F2F2F2 (same level as headings; hierarchy is conveyed by bold, keeping body text absolutely clear). */
     fun textPrimary(): Color = color(0x111111, 0xF2F2F2)
 
-    /** 次级文字（正文标准对比度，不淡化）：同正文色 */
+    /** Secondary text (standard body contrast, never faded): same color as body text. */
     fun textSecondary(): Color = color(0x111111, 0xF2F2F2)
 
-    /** 标题（配合加粗使用）：浅色 #111111 / 深色 #F2F2F2 */
+    /** Heading (used with bold): light #111111 / dark #F2F2F2. */
     fun textHeading(): Color = color(0x111111, 0xF2F2F2)
 
-    /** 弱化文字（时间戳/版本号等非关键信息，仍保证可读）：浅色 #333333 / 深色 #CCCCCC */
+    /** Muted text (timestamps/version numbers and other non-critical info, still readable): light #333333 / dark #CCCCCC. */
     fun textMuted(): Color = color(0x333333, 0xCCCCCC)
 
-    /** 链接色 */
+    /** Link color. */
     fun link(): Color = color(0x1A73E8, 0x64B5F6)
 
-    /** 切换插件主题并广播刷新事件。 */
+    /** Switches the plugin theme and broadcasts a refresh event. */
     fun setTheme(mode: PluginThemeMode) {
         if (this.mode == mode) return
         this.mode = mode
@@ -105,8 +108,8 @@ object PluginTheme {
     }
 
     /**
-     * 监听 IDE 全局主题变更：FOLLOW 模式下跟随刷新插件 UI。
-     * 幂等，应用启动时调用一次。
+     * Listens for global IDE theme changes: in FOLLOW mode the plugin UI refreshes along.
+     * Idempotent; call once at application startup.
      */
     fun ensureIdeThemeListener() {
         if (listenerInitialized) return
@@ -118,7 +121,7 @@ object PluginTheme {
             ApplicationManager.getApplication().messageBus.connect().subscribe(
                 LafManagerListener.TOPIC,
                 LafManagerListener {
-                    // FOLLOW 模式跟随 IDE；DARK/LIGHT 固定配色不响应
+                    // FOLLOW mode follows the IDE; DARK/LIGHT keep fixed palettes and ignore changes
                     if (mode == PluginThemeMode.FOLLOW) {
                         broadcastThemeChanged()
                     }

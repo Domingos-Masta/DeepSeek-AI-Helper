@@ -19,56 +19,56 @@ import org.apache.lucene.store.Directory
 import java.io.File
 
 /**
- * Lucene 索引构建与增量更新（文本/文档专用）。
- * 扫描项目源码根目录下的文档文本文件（.md, .txt, .rst 等），切块后建立 BM25 倒排索引。
+ * Lucene index construction and incremental updates (for text/document only).
+ * Scans document text files (.md, .txt, .rst, etc.) under the project source root and builds a BM25 inverted index after chunking.
  *
- * 用途：为 RAG 提供非结构化文本检索能力，适用于 README、文档、配置说明等。
- * 注意：代码文件的搜索已由 AgenticSearch（grep/glob/read 工具）替代。
- * 详见 com.deepseek.plugin.search.AgenticSearch。
+ * Purpose: provides unstructured text retrieval for RAG, suitable for READMEs, docs, config notes, etc.
+ * Note: code file search has been superseded by AgenticSearch (grep/glob/read tools).
+ * See com.deepseek.plugin.search.AgenticSearch for details.
  *
- * 索引策略：
- * - 存在 ByteBuffersDirectory（堆内内存），项目关闭即释放
- * - 首次调用 buildIndex 全量构建
- * - 可通过 onFileSaved 增量更新单个文件
- * - 内置脏检测：detectDirtyFiles 对比文件时间戳
+ * Indexing strategy:
+ * - Stored in ByteBuffersDirectory (in-heap memory), released when the project closes
+ * - First call to buildIndex performs a full build
+ * - A single file can be updated incrementally via onFileSaved
+ * - Built-in dirty detection: detectDirtyFiles compares file timestamps
  */
 class RagIndexer(private val project: Project) {
 
-    /** Lucene 内存目录，同一目录可被多个 IndexReader 安全共享 */
+    /** Lucene in-memory directory; the same directory can be safely shared by multiple IndexReaders */
     private val directory: Directory = ByteBuffersDirectory()
 
     private val analyzer = StandardAnalyzer()
     private val splitter = ChunkSplitter()
     private val indexerLock = Any()
 
-    /** 文件时间戳缓存，用于脏检测 */
+    /** File timestamp cache used for dirty detection */
     private val fileTimestamps = mutableMapOf<String, Long>()
-    /** 最近一次全量/增量更新的时间戳 */
+    /** Timestamp of the most recent full/incremental update */
     private var lastBuildTime: Long = 0
-    /** 最小重建间隔（毫秒） */
+    /** Minimum rebuild interval (milliseconds) */
     private val rebuildIntervalMs = 30_000L
 
-    // ── 支持的源文件类型（仅文本/文档类文件） ──
+    // ── Supported source file types (text/document files only) ──
     private val supportedExtensions = setOf("md", "txt", "rst", "adoc", "asciidoc",
         "markdown", "html", "htm", "xml", "yaml", "yml", "properties", "json", "toml",
         "ini", "cfg", "conf")
 
-    // ── 公开方法 ──
+    // ── Public methods ──
 
-    /** 获取 Lucene 目录，供 Retriever 打开 IndexReader */
+    /** Returns the Lucene directory for the Retriever to open an IndexReader */
     fun getDirectory(): Directory = directory
 
-    /** 获取分析器，供 Retriever 构建 Query 时使用 */
+    /** Returns the analyzer for the Retriever to use when building queries */
     fun getAnalyzer(): StandardAnalyzer = analyzer
 
     /**
-     * 确保索引已构建且不陈旧。
-     * 满足以下任一条件会触发重建：距上次构建超过 30 秒 / 有文件变更
+     * Ensures the index is built and not stale.
+     * A rebuild is triggered when any of the following holds: more than 30 seconds since the last build / files have changed
      */
     fun ensureFresh() {
         val now = System.currentTimeMillis()
         if (now - lastBuildTime < rebuildIntervalMs) {
-            // 时间窗口内做增量脏检测
+            // Perform incremental dirty detection within the time window
             val dirty = detectDirtyFiles()
             if (dirty.isEmpty()) return
             incrementalUpdate(dirty)
@@ -78,7 +78,7 @@ class RagIndexer(private val project: Project) {
         buildIndex()
     }
 
-    // ── 全量构建 ──
+    // ── Full build ──
 
     private fun buildIndex() {
         synchronized(indexerLock) {
@@ -99,7 +99,7 @@ class RagIndexer(private val project: Project) {
         }
     }
 
-    // ── 增量更新 ──
+    // ── Incremental update ──
 
     private fun incrementalUpdate(dirtyPaths: Set<String>) {
         synchronized(indexerLock) {
@@ -108,7 +108,7 @@ class RagIndexer(private val project: Project) {
             for (dirtyPath in dirtyPaths) {
                 val file = File(dirtyPath)
                 if (!file.exists()) {
-                    // 文件被删除 → 清除对应 chunk
+                    // File deleted → remove the corresponding chunks
                     val relativePath = getRelativePath(file)
                     writer.deleteDocuments(Term("filePath", relativePath))
                     fileTimestamps.remove(dirtyPath)
@@ -118,9 +118,9 @@ class RagIndexer(private val project: Project) {
 
                 val relativePath = getRelativePath(file)
                 val content = file.readText()
-                // 删除旧 chunk
+                // Delete old chunks
                 writer.deleteDocuments(Term("filePath", relativePath))
-                // 写入新 chunk
+                // Write new chunks
                 val chunks = splitter.split(relativePath, content)
                 for (chunk in chunks) {
                     writer.addDocument(toLuceneDoc(chunk))
@@ -134,7 +134,7 @@ class RagIndexer(private val project: Project) {
         }
     }
 
-    // ── 脏文件检测（复用时间戳方案） ──
+    // ── Dirty file detection (reuses the timestamp approach) ──
 
     private fun detectDirtyFiles(): Set<String> {
         val dirty = mutableSetOf<String>()
@@ -169,7 +169,7 @@ class RagIndexer(private val project: Project) {
         }
     }
 
-    // ── 文件收集（全量构建用） ──
+    // ── File collection (for full builds) ──
 
     private fun collectFiles(root: File, dir: File, writer: IndexWriter) {
         val children = dir.listFiles() ?: return
@@ -193,15 +193,15 @@ class RagIndexer(private val project: Project) {
                         writer.addDocument(toLuceneDoc(chunk))
                     }
                 } catch (_: Exception) {
-                    // 跳过无法读取的文件
+                    // Skip unreadable files
                 }
             }
         }
     }
 
-    // ── 工具方法 ──
+    // ── Utility methods ──
 
-    /** 通过 IntelliJ API 获取源码根目录路径 */
+    /** Gets the source root path via the IntelliJ API */
     private fun getSourceRootPaths(): List<String> {
         val paths = mutableListOf<String>()
         try {
@@ -217,7 +217,7 @@ class RagIndexer(private val project: Project) {
         return paths
     }
 
-    /** 获取文件相对于项目根或源码根的路径 */
+    /** Gets a file's path relative to the project root or source root */
     private fun getRelativePath(file: File): String {
         val base = project.basePath ?: return file.name
         return file.absolutePath.removePrefix(base).trimStart(File.separatorChar)
@@ -231,7 +231,7 @@ class RagIndexer(private val project: Project) {
     private fun createIndexWriter(): IndexWriter {
         val config = IndexWriterConfig(analyzer).apply {
             openMode = IndexWriterConfig.OpenMode.CREATE_OR_APPEND
-            // 限制 Lucene 不要消耗太多内存
+            // Keep Lucene from consuming too much memory
             ramBufferSizeMB = 64.0
         }
         return IndexWriter(directory, config)
@@ -243,10 +243,10 @@ class RagIndexer(private val project: Project) {
             add(StringField("filePath", chunk.filePath, Field.Store.YES))
             add(IntPoint("startLine", chunk.startLine))
             add(IntPoint("endLine", chunk.endLine))
-            // 用于显示的存储字段
+            // Stored field used for display
             add(StringField("startLineStr", chunk.startLine.toString(), Field.Store.YES))
             add(StringField("endLineStr", chunk.endLine.toString(), Field.Store.YES))
-            // 正文 — 分词+存储，支持 BM25 全文检索
+            // Body — tokenized + stored, supports BM25 full-text search
             add(TextField("content", chunk.content, Field.Store.YES))
         }
     }

@@ -19,10 +19,12 @@ import java.awt.event.FocusEvent
 import javax.swing.JPanel
 
 /**
- * Claude / Codex 独立配置面板。
+ * Standalone configuration panel for Claude / Codex.
  *
- * 与 ApiConfigPanel 分离：本地凭据（~/.claude/settings.json、~/.codex/config.toml + auth.json）
- * 仅在用户显式点击授权按钮后读取并写入设置，避免未授权的凭据被发往 API 端点导致 403。
+ * Kept separate from ApiConfigPanel: local credentials (~/.claude/settings.json,
+ * ~/.codex/config.toml + auth.json) are read and written into settings only after the
+ * user explicitly clicks the authorization button, avoiding unauthorized credentials
+ * being sent to API endpoints and causing 403 errors.
  */
 class ClaudeCodexConfigPanel : JPanel(BorderLayout()) {
 
@@ -152,7 +154,7 @@ class ClaudeCodexConfigPanel : JPanel(BorderLayout()) {
         add(form, BorderLayout.CENTER)
     }
 
-    /** 显式授权：读取 ~/.claude/settings.json 的 env 配置并写入设置 */
+    /** Explicit authorization: reads the env configuration from ~/.claude/settings.json and writes it into settings. */
     private fun importClaudeSettingsJson() {
         val key = readClaudeSettingsEnvKey()
         if (key == null) {
@@ -173,7 +175,7 @@ class ClaudeCodexConfigPanel : JPanel(BorderLayout()) {
         )
     }
 
-    /** 显式授权：读取 ~/.codex/config.toml + auth.json 并写入设置 */
+    /** Explicit authorization: reads ~/.codex/config.toml + auth.json and writes them into settings. */
     private fun importCodexLocalConfig() {
         val apiKey = readCodexAuthApiKey()
         if (apiKey == null) {

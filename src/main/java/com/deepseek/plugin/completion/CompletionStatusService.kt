@@ -6,10 +6,10 @@ import com.intellij.openapi.diagnostic.Logger
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * 补全状态管理服务。
+ * Completion state management service.
  *
- * 跨组件共享补全的当前状态，供状态栏 Widget 和 Ghost Text 渲染器查询。
- * 每个状态变更自动通知状态栏刷新。
+ * Shares the current completion state across components so the status bar widget and Ghost Text renderer can query it.
+ * Every state change automatically notifies the status bar to refresh.
  */
 @Service(Service.Level.APP)
 class CompletionStatusService {
@@ -21,15 +21,15 @@ class CompletionStatusService {
             get() = ApplicationManager.getApplication().getService(CompletionStatusService::class.java)
     }
 
-    /** 补全状态枚举 */
+    /** Completion state enum */
     enum class State {
-        /** 空闲 */
+        /** Idle */
         IDLE,
-        /** 正在生成补全 */
+        /** Generating completion */
         GENERATING,
-        /** 补全就绪 */
+        /** Completion ready */
         READY,
-        /** 发生错误 */
+        /** An error occurred */
         ERROR
     }
 
@@ -38,19 +38,19 @@ class CompletionStatusService {
     private var consecutiveErrors: Int = 0
     private var listeners: MutableList<(State) -> Unit> = mutableListOf()
 
-    /** 获取当前状态 */
+    /** Gets the current state */
     fun getState(): State = stateRef.get()
 
-    /** 获取最近的错误消息 */
+    /** Gets the most recent error message */
     fun getErrorMessage(): String = errorMessage
 
-    /** 获取连续失败次数 */
+    /** Gets the number of consecutive failures */
     fun getConsecutiveErrors(): Int = consecutiveErrors
 
-    /** 重置连续失败计数 */
+    /** Resets the consecutive failure count */
     fun resetConsecutiveErrors() { consecutiveErrors = 0 }
 
-    /** 切换到 GENERATING 状态 */
+    /** Switches to the GENERATING state */
     fun onGenerating() {
         val prev = stateRef.getAndSet(State.GENERATING)
         if (prev != State.GENERATING) {
@@ -59,7 +59,7 @@ class CompletionStatusService {
         }
     }
 
-    /** 切换到 READY 状态（有补全结果） */
+    /** Switches to the READY state (a completion result is available) */
     fun onReady() {
         consecutiveErrors = 0
         val prev = stateRef.getAndSet(State.READY)
@@ -69,7 +69,7 @@ class CompletionStatusService {
         }
     }
 
-    /** 切换到 ERROR 状态 */
+    /** Switches to the ERROR state */
     fun onError(message: String) {
         consecutiveErrors++
         errorMessage = message
@@ -80,7 +80,7 @@ class CompletionStatusService {
         }
     }
 
-    /** 切换到 IDLE 状态 */
+    /** Switches to the IDLE state */
     fun onIdle() {
         consecutiveErrors = 0
         val prev = stateRef.getAndSet(State.IDLE)
@@ -89,14 +89,14 @@ class CompletionStatusService {
         }
     }
 
-    /** 注册状态变更监听器 */
+    /** Registers a state change listener */
     fun addListener(listener: (State) -> Unit) {
         synchronized(listeners) {
             listeners.add(listener)
         }
     }
 
-    /** 移除状态变更监听器 */
+    /** Removes a state change listener */
     fun removeListener(listener: (State) -> Unit) {
         synchronized(listeners) {
             listeners.remove(listener)

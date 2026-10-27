@@ -3,93 +3,93 @@ package com.deepseek.plugin.completion
 import com.intellij.openapi.diagnostic.Logger
 
 /**
- * 补全结果后处理器。
+ * Post-processor for completion results.
  *
- * 借鉴 deepseek-copilot 的 CompletionPostProcessor，
- * 实现行级 + 字符级重叠消除 + 括号平衡 + 光标标记清理，
- * 确保补全结果不会重复光标后已存在的代码，且语法上合理。
+ * Inspired by deepseek-copilot's CompletionPostProcessor,
+ * implements line-level + character-level overlap removal + bracket balancing + cursor marker cleanup,
+ * ensuring the completion result does not duplicate code that already exists after the caret and is syntactically reasonable.
  */
 object CompletionPostProcessor {
 
     private val LOG = Logger.getInstance(CompletionPostProcessor::class.java)
 
-    /** 括号对映射：右括号 → 左括号 */
+    /** Bracket pair mapping: closing bracket → opening bracket */
     private val CLOSE_TO_OPEN = mapOf(
         ')' to '(', '}' to '{', ']' to '[',
         '"' to '"', '\'' to '\''
     )
 
-    /** 所有左括号集合 */
+    /** Set of all opening brackets */
     private val OPEN_CHARS = CLOSE_TO_OPEN.values.toSet()
 
-    /** 所有右括号集合 */
+    /** Set of all closing brackets */
     private val CLOSE_CHARS = CLOSE_TO_OPEN.keys.toSet()
 
-    /** 需要跳过配对验证的字符（引号） */
+    /** Characters that skip pairing validation (quotes) */
     private val SYMMETRIC_CHARS = setOf('"', '\'')
 
     /**
-     * 完整后处理管道。
+     * Full post-processing pipeline.
      *
-     * 1. 行尾标准化 CRLF/CR → LF
-     * 2. 去掉 Markdown 代码块标记
-     * 3. 去掉自然语言前言（"Here is the code..."）
-     * 4. 去掉与光标后文本（suffix）的重叠部分（行级 + 字符级）
-     * 5. 如果模型重复了光标前的最后一个单词，去掉
-     * 6. 括号/引号平衡修复（剔除多余闭括号/补全缺失闭括号）
-     * 7. 去掉光标标记（<|cursor|> / $0 / [CURSOR]）
-     * 8. 清理首尾空白
+     * 1. Normalize line endings CRLF/CR → LF
+     * 2. Remove Markdown code block markers
+     * 3. Remove natural-language preambles ("Here is the code...")
+     * 4. Remove the overlapping portion with the text after the caret (suffix) (line-level + character-level)
+     * 5. Remove the last word if the model repeated it before the caret
+     * 6. Fix bracket/quote balance (remove extra closing brackets / complete missing closing brackets)
+     * 7. Remove cursor markers (<|cursor|> / $0 / [CURSOR])
+     * 8. Trim leading/trailing whitespace
      *
-     * @param raw 模型返回的原始文本
-     * @param prefixLastLine 光标所在行的文本（光标前部分）
-     * @param suffix 光标后的文本（用于重叠消除）
-     * @return 清理后的补全文本
+     * @param raw the raw text returned by the model
+     * @param prefixLastLine the text of the caret's line (the part before the caret)
+     * @param suffix the text after the caret (used for overlap removal)
+     * @return the cleaned completion text
      */
     fun process(raw: String, prefixLastLine: String, suffix: String): String {
         var cleaned = raw
 
-        // 0) 行尾标准化
+        // 0) Normalize line endings
         cleaned = cleaned.replace("\r\n", "\n").replace('\r', '\n')
 
-        // 1) 去掉 Markdown 代码块标记
+        // 1) Remove Markdown code block markers
         cleaned = cleaned.replace(Regex("```[\\s\\S]*?```"), "").trim()
         cleaned = cleaned.replace(Regex("^```\\w*\\s*", RegexOption.MULTILINE), "")
         cleaned = cleaned.replace(Regex("```\\s*$", RegexOption.MULTILINE), "")
 
-        // 2) 去掉 "Completion:" "Here is the completion:" 等自然语言前言
+        // 2) Remove natural-language preambles such as "Completion:" and "Here is the completion:"
         cleaned = cleaned.replace(Regex("^(?i)\\s*(completion|here\\s+is|suggestion|result)\\s*[:：]\\s*"), "")
 
-        // 3) 行级 + 字符级重叠消除（核心改进）
+        // 3) Line-level + character-level overlap removal (core improvement)
         cleaned = findMaxOverlapSuffixPrefix(cleaned, suffix)
 
-        // 4) 如果模型重复了光标前的最后一个单词，去掉
+        // 4) Remove the last word if the model repeated it before the caret
         val lastWord = prefixLastLine.split(Regex("[\\s(){}\\[\\]=;,.]+")).lastOrNull()?.trim() ?: ""
         if (lastWord.isNotBlank() && lastWord.length >= 2 && cleaned.startsWith(lastWord)) {
             cleaned = cleaned.removePrefix(lastWord)
         }
 
-        // 5) 括号/引号平衡修复（新增）
+        // 5) Bracket/quote balance fix (new)
         cleaned = normalizeCharPairs(cleaned)
 
-        // 6) 去掉光标标记
+        // 6) Remove cursor markers
         cleaned = replaceCursorLocation(cleaned)
 
-        // 7) 去掉前置空行
+        // 7) Remove leading blank lines
         cleaned = cleaned.trimStart()
 
         return cleaned
     }
 
-    // ===================== 括号/引号平衡 =====================
+    // ===================== Bracket/quote balancing =====================
 
     /**
-     * 括号/引号平衡修复。
+     * Bracket/quote balance repair.
      *
-     * 使用栈扫描 LLM 输出的括号/引号对：
-     * - 剔除多余的闭括号（模型常多输出 } 或 )）
-     * - 补全缺失的闭括号（模型输出被截断时）
+     * Uses a stack to scan the bracket/quote pairs in the LLM output:
+     * - Removes extra closing brackets (models often output an extra } or ))
+     * - Completes missing closing brackets (when the model output is truncated)
      *
-     * 支持的符号：() {} [] "" ''
+     * Supported symbols: () {} [] "" ''
      */
     private fun normalizeCharPairs(text: String): String {
         if (text.isBlank()) return text
@@ -99,29 +99,29 @@ object CompletionPostProcessor {
 
         for (ch in text) {
             when {
-                // 左括号：压栈
+                // Opening bracket: push onto the stack
                 ch in OPEN_CHARS -> {
                     stack.addLast(BracketInfo(ch, result.length))
                     result.append(ch)
                 }
-                // 右括号
+                // Closing bracket
                 ch in CLOSE_CHARS -> {
                     val expectedOpen = CLOSE_TO_OPEN[ch]
                     if (stack.isEmpty()) {
-                        // 多余的闭括号 — 跳过（不追加）
+                        // Extra closing bracket — skip (do not append)
                         continue
                     }
                     if (ch in SYMMETRIC_CHARS && stack.last().char == ch) {
-                        // 对称引号配对成功
+                        // Symmetric quotes paired successfully
                         stack.removeLast()
                         result.append(ch)
                     } else if (stack.last().char == expectedOpen) {
-                        // 正常配对
+                        // Normal pairing
                         stack.removeLast()
                         result.append(ch)
                     } else {
-                        // 括号不匹配 — 跳过这个多余的闭括号
-                        // 例如: text = "func(a }" → 跳过 }
+                        // Mismatched brackets — skip this extra closing bracket
+                        // e.g. text = "func(a }" → skip the }
                         continue
                     }
                 }
@@ -129,10 +129,10 @@ object CompletionPostProcessor {
             }
         }
 
-        // 补全未闭合的左括号（只在文本末尾追加）
-        // 从栈底到栈顶依次补全（最早打开的括号先闭合）
+        // Complete unclosed opening brackets (only appended at the end of the text)
+        // Complete from the bottom of the stack to the top (the earliest opened bracket closes first)
         if (stack.isNotEmpty()) {
-            // 检查栈里每个未闭合的括号，只在末尾补全
+            // Check every unclosed bracket in the stack and complete them only at the end
             for (info in stack) {
                 val closeChar = findCloseChar(info.char)
                 if (closeChar != null) {
@@ -144,13 +144,13 @@ object CompletionPostProcessor {
         return result.toString()
     }
 
-    /** 括号位置信息 */
+    /** Bracket position information */
     private data class BracketInfo(
         val char: Char,
         val position: Int
     )
 
-    /** 查找左括号对应的右括号 */
+    /** Finds the closing bracket for an opening bracket */
     private fun findCloseChar(open: Char): Char? {
         return when (open) {
             '(' -> ')'
@@ -162,14 +162,14 @@ object CompletionPostProcessor {
         }
     }
 
-    // ===================== 光标标记清理 =====================
+    // ===================== Cursor marker cleanup =====================
 
     /**
-     * 去掉 LLM 常输出的光标位置标记。
+     * Removes cursor position markers that LLMs commonly output.
      */
     private fun replaceCursorLocation(text: String): String {
         var result = text
-        // 常见的标记格式
+        // Common marker formats
         result = result.replace(Regex("<\\|?cursor\\|?>"), "")
         result = result.replace("\\$0", "")
         result = result.replace(Regex("\\[CURSOR]"), "")
@@ -177,21 +177,21 @@ object CompletionPostProcessor {
         return result.trim()
     }
 
-    // ===================== 行级 + 字符级重叠消除 =====================
+    // ===================== Line-level + character-level overlap removal =====================
 
     /**
-     * 行级 + 字符级重叠消除。
+     * Line-level + character-level overlap removal.
      *
-     * 算法思路：
-     * 1. 将补全文本按行分割
-     * 2. 从补全文本的最后一行开始，尝试与 suffix 的第一行匹配
-     * 3. 如果行匹配成功，继续匹配更多行
-     * 4. 行级匹配失败时，退回到字符级匹配（从后缀开头向后匹配）
-     * 5. 剪掉补全文本中的重叠部分
+     * Algorithm:
+     * 1. Split the completion text by lines
+     * 2. Starting from the last line of the completion text, try to match it with the first line of the suffix
+     * 3. If a line matches, continue matching more lines
+     * 4. If line-level matching fails, fall back to character-level matching (matching from the start of the suffix)
+     * 5. Cut off the overlapping portion of the completion text
      *
-     * @param completion 模型返回的补全文本
-     * @param suffix 光标后的代码文本
-     * @return 去除重叠后的补全文本
+     * @param completion the completion text returned by the model
+     * @param suffix the code text after the caret
+     * @return the completion text with the overlap removed
      */
     private fun findMaxOverlapSuffixPrefix(completion: String, suffix: String): String {
         if (completion.isBlank() || suffix.isBlank()) return completion
@@ -199,7 +199,7 @@ object CompletionPostProcessor {
         val completionLines = completion.split("\n")
         val suffixLines = suffix.split("\n")
 
-        // ─── 阶段 1: 行级重叠检测 ───
+        // ─── Phase 1: line-level overlap detection ───
         val maxOverlapLines = minOf(completionLines.size, suffixLines.size)
         var bestLineOverlap = 0
 
@@ -218,7 +218,7 @@ object CompletionPostProcessor {
             }
         }
 
-        // ─── 阶段 2: 字符级重叠检测 ───
+        // ─── Phase 2: character-level overlap detection ───
         val compText = completion.trimEnd()
         val suffixText = suffix.trimStart()
 

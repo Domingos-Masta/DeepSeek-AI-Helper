@@ -14,15 +14,15 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.DumbAware
 
 /**
- * 手动触发 AI 补全（Alt+P / 右键菜单）。
+ * Manually triggers AI completion (Alt+P / context menu).
  *
- * 与自动触发（CompletionContributor）不同的是：
- * - 跳过缓存，总是调用 API
- * - 使用更高的 temperature（0.2 默认）和更多 max_tokens（512 默认）
- * - 生成更长、更多样的补全结果
- * - 以 Ghost Text 形式展示，按 Tab 接受
+ * Unlike automatic triggering (CompletionContributor):
+ * - Skips the cache and always calls the API
+ * - Uses a higher temperature (default 0.2) and more max_tokens (default 512)
+ * - Produces longer, more varied completion results
+ * - Displays the result as Ghost Text, accepted with Tab
  *
- * 借鉴 deepseek-copilot 的 DeepSeekTriggerCompletionAction。
+ * Inspired by deepseek-copilot's DeepSeekTriggerCompletionAction.
  */
 class DeepSeekTriggerCompletionAction : AnAction(), DumbAware {
 
@@ -42,41 +42,41 @@ class DeepSeekTriggerCompletionAction : AnAction(), DumbAware {
             return
         }
 
-        // 位置预处理
+        // Position pre-processing
         val document = editor.document
         val caretOffset = editor.caretModel.offset
         val cursorLine = document.getLineNumber(caretOffset)
 
-        // 收集前缀（光标前最多 30 行）
+        // Collect the prefix (up to 30 lines before the caret)
         val startLine = maxOf(0, cursorLine - settings.maxContextLines)
         val startOffset = document.getLineStartOffset(startLine)
         val prefix = document.getText(com.intellij.openapi.util.TextRange(startOffset, caretOffset))
 
-        // 收集后缀（光标后最多 20 行）
+        // Collect the suffix (up to 20 lines after the caret)
         val endLine = minOf(document.lineCount - 1, cursorLine + 20)
         val endOffset = if (endLine > cursorLine) document.getLineEndOffset(endLine) else caretOffset
         val suffix = document.getText(com.intellij.openapi.util.TextRange(caretOffset, endOffset))
 
-        // 获取语言
+        // Determine the language
         val file = e.getData(CommonDataKeys.PSI_FILE) ?: return
         val language = when {
             !file.fileType.isBinary -> file.fileType.name
             else -> inferLanguage(file.name)
         }
 
-        // 收集文件上下文（包声明 + imports）
+        // Collect file context (package declaration + imports)
         val fileContext = collectFileContext(document, cursorLine, 30)
 
-        // 状态更新
+        // Update status
         val statusService = CompletionStatusService.instance
         statusService.onGenerating()
 
-        // 清理已有的 Ghost Text
+        // Dismiss any existing Ghost Text
         GhostTextManager.dismissGhostText(editor)
 
         LOG.info("Manual trigger | lang=$language | prefixLen=${prefix.length} | suffixLen=${suffix.length}")
 
-        // Anthropic 等不支持 FIM 的 Provider：直接提示并退出
+        // Providers without FIM support (e.g. Anthropic): notify and exit
         if (!LlmProviderRegistry.get(settings.provider).supportsFim) {
             statusService.onIdle()
             com.intellij.openapi.ui.Messages.showInfoMessage(
@@ -87,7 +87,7 @@ class DeepSeekTriggerCompletionAction : AnAction(), DumbAware {
             return
         }
 
-        // 异步调用 FIM API（MANUAL 模式）
+        // Call the FIM API asynchronously (MANUAL mode)
         client.completionFim(
             prefix = prefix,
             suffix = suffix,
@@ -108,7 +108,7 @@ class DeepSeekTriggerCompletionAction : AnAction(), DumbAware {
                 return@completionFim
             }
 
-            // 回到 EDT 显示 Ghost Text
+            // Return to the EDT to show the Ghost Text
             ApplicationManager.getApplication().invokeLater {
                 if (!editor.isDisposed) {
                     GhostTextManager.showGhostText(editor, suggestion, caretOffset)

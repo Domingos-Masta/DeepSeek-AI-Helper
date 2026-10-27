@@ -5,27 +5,31 @@ import com.deepseek.plugin.i18n.I18n
 import com.intellij.ui.JBColor
 import com.intellij.util.ui.JBUI
 import java.awt.*
+import java.awt.image.BufferedImage
 import javax.swing.*
 
 /**
  * Empty-state welcome panel shown when the chat has no messages yet.
  *
  * Displays the plugin logo, name, a short description, and useful keyboard shortcuts
- * to help users get started. Uses robot.png from plugin resources.
+ * to help users get started. Uses the chat-bubble plugin icon from plugin resources.
  */
 class WelcomePanel : JPanel(BorderLayout()) {
 
-    /** Robot icon scaled to a reasonable display size. */
+    /** Chat-bubble plugin logo rendered to a reasonable display size. */
     private val pluginIcon: Icon? = run {
         try {
-            val url = WelcomePanel::class.java.getResource("/robot.png")
-            if (url != null) {
-                val original = ImageIcon(url)
-                // Scale to a nice display size (max 120px wide)
-                val scaleW = minOf(original.iconWidth, 120)
-                val scaleH = (original.iconHeight * scaleW) / original.iconWidth
-                ImageIcon(original.image.getScaledInstance(scaleW, scaleH, Image.SCALE_SMOOTH))
-            } else null
+            val svg = com.intellij.openapi.util.IconLoader.getIcon("/META-INF/pluginIcon.svg", WelcomePanel::class.java)
+            val target = 96
+            val img = BufferedImage(target, target, BufferedImage.TYPE_INT_ARGB)
+            val g2 = img.createGraphics()
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+            val scale = target.toDouble() / svg.iconWidth
+            g2.scale(scale, scale)
+            svg.paintIcon(null, g2, 0, 0)
+            g2.dispose()
+            ImageIcon(img)
         } catch (_: Exception) {
             null
         }
@@ -37,7 +41,8 @@ class WelcomePanel : JPanel(BorderLayout()) {
     }
 
     /**
-     * 语言切换即时刷新：重建欢迎面板内容（标题/副标题/快捷键提示等）。
+     * Rebuilds the welcome panel content immediately on language switch
+     * (title / subtitle / shortcut hints, etc.).
      */
     fun refreshTexts() {
         removeAll()
@@ -96,10 +101,10 @@ class WelcomePanel : JPanel(BorderLayout()) {
         val tips = listOf(
             TipEntry("Enter", I18n.tr("send")),
             TipEntry("Shift + Enter", I18n.tr("newline")),
-            TipEntry("选中代码", I18n.tr("autoFill")),
-            TipEntry("上传文件", I18n.tr("supportedFiles")),
+            TipEntry("Select code", I18n.tr("autoFill")),
+            TipEntry("Upload file", I18n.tr("supportedFiles")),
             TipEntry("💬 Q&A / 🤖 Agent", I18n.tr("modeSwitch")),
-            TipEntry("清除会话", I18n.tr("clearSession")),
+            TipEntry("Clear session", I18n.tr("clearSession")),
         )
 
         for ((i, tip) in tips.withIndex()) {

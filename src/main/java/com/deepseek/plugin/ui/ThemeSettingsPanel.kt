@@ -36,15 +36,15 @@ import javax.swing.JPanel
 import javax.swing.UIManager
 
 /**
- * Theme settings panel — 跟随系统/深色/浅色主题切换，语言与字体即时刷新。
+ * Theme settings panel — system/dark/light theme switching with instant language and font refresh.
  *
- * 改进点：
- * - 使用 IntelliJ UI DSL（panel/group/row）布局，与其他设置面板风格统一
- * - 主题按钮支持 hover 高亮、键盘操作（Tab/方向键/回车）
- * - 图标按 JBUI.scale() 适配 HiDPI
- * - 语言切换发布 MessageBus 事件，所有面板即时刷新（无需重开设置）
- * - 字体切换发布 MessageBus 事件，聊天消息气泡即时换字号
- * - 颜色使用 UIManager keys，适配任意 LAF
+ * Improvements:
+ * - Uses the IntelliJ UI DSL (panel/group/row) layout, consistent with the other settings panels
+ * - Theme buttons support hover highlight and keyboard operation (Tab/arrow keys/Enter)
+ * - Icons scale via JBUI.scale() for HiDPI
+ * - Language changes publish a MessageBus event so all panels refresh instantly (no need to reopen settings)
+ * - Font changes publish a MessageBus event so chat message bubbles change size instantly
+ * - Colors use UIManager keys, adapting to any LAF
  */
 class ThemeSettingsPanel : JPanel(BorderLayout()) {
 
@@ -57,17 +57,17 @@ class ThemeSettingsPanel : JPanel(BorderLayout()) {
         border = JBUI.Borders.empty(20, 20, 20, 20)
 
         val form = panel {
-            // ── 主题选择 ──
+            // ── Theme selection ──
             group(I18n.tr("settings.theme.group")) {
                 row {
                     cell(createThemeRow()).align(AlignX.FILL)
                 }
             }
 
-            // ── 语言/Language 选择器 ──
+            // ── Language selector ──
             group(I18n.tr("settings.language.group")) {
                 row(I18n.tr("lang.label")) {
-                    val langs = listOf("zh" to "中文", "en" to "English")
+                    val langs = listOf("en" to "English")
                     val langCombo = com.intellij.openapi.ui.ComboBox(langs.map { it.second }.toTypedArray())
                     langCombo.selectedIndex = langs.indexOfFirst { it.first == settings.language }.coerceAtLeast(0)
                     langCombo.addActionListener {
@@ -75,9 +75,9 @@ class ThemeSettingsPanel : JPanel(BorderLayout()) {
                         if (idx in langs.indices) {
                             val lang = langs[idx].first
                             settings.language = lang
-                            // I18n.currentLang setter 会自动发布语言切换事件
+                            // The I18n.currentLang setter automatically publishes the language-change event
                             I18n.currentLang = lang
-                            // 刷新本面板文本（标题/组标题/按钮）
+                            // Refresh this panel's text (title/group titles/buttons)
                             refreshPanelTexts()
                         }
                     }
@@ -86,7 +86,7 @@ class ThemeSettingsPanel : JPanel(BorderLayout()) {
                 }
             }
 
-            // ── 字体大小/Font Size 选择器 ──
+            // ── Font size selector ──
             group(I18n.tr("settings.font.group")) {
                 row(I18n.tr("settings.font.size")) {
                     val fontSizes = listOf(12, 13, 14, 15, 16)
@@ -96,7 +96,7 @@ class ThemeSettingsPanel : JPanel(BorderLayout()) {
                         val idx = fontCombo.selectedIndex
                         if (idx in fontSizes.indices) {
                             settings.contentFontSize = fontSizes[idx]
-                            // 发布字体切换事件，聊天面板即时刷新
+                            // Publish the font-change event so the chat panel refreshes instantly
                             publishFontChanged()
                         }
                     }
@@ -110,7 +110,7 @@ class ThemeSettingsPanel : JPanel(BorderLayout()) {
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  主题按钮行
+    //  Theme button row
     // ════════════════════════════════════════════════════════════════
 
     private fun createThemeRow(): JPanel {
@@ -143,7 +143,7 @@ class ThemeSettingsPanel : JPanel(BorderLayout()) {
     }
 
     /**
-     * 主题选择按钮 — 支持 hover 高亮、选中态、焦点描边、键盘操作。
+     * Theme selection button — supports hover highlight, selected state, focus outline, and keyboard operation.
      */
     private inner class ThemeButton(
         private val title: String,
@@ -237,12 +237,12 @@ class ThemeSettingsPanel : JPanel(BorderLayout()) {
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  主题应用
+    //  Theme application
     // ════════════════════════════════════════════════════════════════
 
     /**
-     * 应用插件独立主题：只更新插件自身配色状态并广播刷新事件，
-     * 不再调用 LafManager —— 不影响 IDE 全局主题。
+     * Applies the plugin's standalone theme: only updates the plugin's own color state and broadcasts a refresh event,
+     * without calling LafManager — so the IDE global theme is unaffected.
      */
     private fun applyTheme(themeKey: String) {
         val mode = when (themeKey) {
@@ -253,7 +253,7 @@ class ThemeSettingsPanel : JPanel(BorderLayout()) {
         PluginTheme.setTheme(mode)
     }
 
-    /** 当前插件主题（从持久化设置读取）。 */
+    /** Current plugin theme (read from persisted settings). */
     private fun detectCurrentTheme(): String = when (DeepSeekSettings.instance.pluginTheme) {
         "dark" -> "dark"
         "light" -> "light"
@@ -261,10 +261,10 @@ class ThemeSettingsPanel : JPanel(BorderLayout()) {
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  即时刷新
+    //  Instant refresh
     // ════════════════════════════════════════════════════════════════
 
-    /** 发布字体切换事件，聊天面板等订阅方即时刷新。 */
+    /** Publishes the font-change event so the chat panel and other subscribers refresh instantly. */
     private fun publishFontChanged() {
         try {
             ApplicationManager.getApplication().messageBus
@@ -274,7 +274,7 @@ class ThemeSettingsPanel : JPanel(BorderLayout()) {
         }
     }
 
-    /** 刷新本面板所有带 i18n key 的文本组件。 */
+    /** Refreshes all text components in this panel that carry an i18n key. */
     private fun refreshPanelTexts() {
         fun walk(c: Component) {
             when (c) {
@@ -297,7 +297,7 @@ class ThemeSettingsPanel : JPanel(BorderLayout()) {
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  图标 helpers（JBUI.scale 适配 HiDPI）
+    //  Icon helpers (JBUI.scale for HiDPI)
     // ════════════════════════════════════════════════════════════════
 
     private fun createFollowIcon(): Icon = HiDpiIcon { g2, x, y, _, _ ->
@@ -345,7 +345,7 @@ class ThemeSettingsPanel : JPanel(BorderLayout()) {
     }
 
     /**
-     * HiDPI 适配图标：按 JBUI.scale 绘制，保证高分屏清晰。
+     * HiDPI-adapted icon: drawn with JBUI.scale for crispness on high-DPI screens.
      */
     private class HiDpiIcon(
         private val draw: (Graphics2D, Int, Int, Int, Int) -> Unit

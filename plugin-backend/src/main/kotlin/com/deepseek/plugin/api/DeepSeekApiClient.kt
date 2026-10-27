@@ -23,19 +23,19 @@ class DeepSeekApiClient {
         private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
         private val gson = Gson()
 
-        /** Anthropic Messages API 版本头 */
+        /** Anthropic Messages API version header */
         private const val ANTHROPIC_API_VERSION = "2023-06-01"
 
-        /** 最大重试次数 */
+        /** Maximum retry count */
         private const val MAX_RETRIES = 2
-        /** 初始退避延迟 (ms) */
+        /** Initial backoff delay (ms) */
         private const val BASE_DELAY_MS = 500L
 
         /**
-         * 判断错误是否可重试：
-         * - IOException（网络层故障，如连接重置、DNS 超时）
-         * - HTTP 429（限流）
-         * - HTTP 5xx（服务端错误）
+         * Determines whether an error is retryable:
+         * - IOException (network-layer failure, e.g. connection reset, DNS timeout)
+         * - HTTP 429 (rate limiting)
+         * - HTTP 5xx (server error)
          */
         private fun isRetryable(error: Throwable, httpCode: Int?): Boolean {
             if (error is IOException) return true
@@ -45,8 +45,8 @@ class DeepSeekApiClient {
     }
 
     /**
-     * 带指数退避重试的执行器。
-     * 只对 [isRetryable] 判定为可重试的错误进行重试。
+     * Executor with exponential-backoff retry.
+     * Retries only errors judged retryable by [isRetryable].
      */
     private fun <T> retryWithBackoff(
         maxRetries: Int = MAX_RETRIES,
@@ -68,7 +68,7 @@ class DeepSeekApiClient {
                             return Result.failure(error)
                         }
                     } else {
-                        return result // 不可重试或已达最大次数
+                        return result // Not retryable or maximum attempts reached
                     }
                 }
             )
@@ -76,25 +76,25 @@ class DeepSeekApiClient {
         return Result.failure(lastError ?: IOException("Retry exhausted"))
     }
 
-    /** 从异常中尝试提取 HTTP 状态码 */
+    /** Attempts to extract the HTTP status code from an exception */
     private fun extractHttpCode(error: Throwable): Int? {
         val msg = error.message ?: return null
         val match = Regex("HTTP (\\d+)").find(msg)
         return match?.groupValues?.get(1)?.toIntOrNull()
     }
 
-    // ── Provider 辅助 ──
+    // ── Provider helpers ──
     private val syncClient get() = HttpClientProvider.chatSyncClient
-    /** 流式 SSE 调用使用宽松超时的共享客户端 */
+    /** Shared client with relaxed timeouts for streaming SSE calls */
     private val streamClient get() = HttpClientProvider.SHARED_CLIENT
-    /** FIM 补全使用短超时客户端 */
+    /** Short-timeout client used for FIM completions */
     private val completionClient get() = HttpClientProvider.completionClient
 
-    // ── Provider 辅助（策略模式）──
+    // ── Provider helpers (strategy pattern) ──
     private fun provider(settings: DeepSeekSettings): LlmProvider =
         LlmProviderRegistry.get(settings.provider)
 
-    // ============ 非流式调用 (Agent Actions) ============
+    // ============ Non-streaming calls (Agent Actions) ============
 
     fun chatSync(systemPrompt: String, userMessage: String): Result<String> {
         val settings = DeepSeekSettings.instance
@@ -125,7 +125,7 @@ class DeepSeekApiClient {
     }
 
     /**
-     * 同步调用 —— 使用显式指定的 API 配置（用于多 Agent 分工）。
+     * Synchronous call — uses an explicitly specified API config (for multi-agent task division).
      */
     fun chatSyncWithExplicitConfig(
         baseUrl: String,
@@ -137,15 +137,15 @@ class DeepSeekApiClient {
         protocol: String = "openai",
         reasoningEffort: String? = null
     ): Result<String> {
-        // H3: 请求限流检查
+        // H3: Request rate-limit check
         if (!HttpClientProvider.chatRateLimiter.tryAcquire()) {
             return Result.failure(RateLimitException())
         }
-        // Anthropic 原生 Messages API 协议（cc-switch 等第三方 Anthropic 兼容中转）
+        // Anthropic native Messages API protocol (cc-switch and other third-party Anthropic-compatible relays)
         if (protocol == "anthropic") {
             return anthropicChatSync(baseUrl, apiKey, model, temperature, maxTokens, messages)
         }
-        // OpenAI Responses API 协议（Codex CLI 直连模式，cc-switch 供应商原生 Responses）
+        // OpenAI Responses API protocol (Codex CLI direct-connect mode, cc-switch provider native Responses)
         if (protocol == "codex-responses") {
             return codexResponsesChatSync(baseUrl, apiKey, model, temperature, maxTokens, messages, reasoningEffort)
         }
@@ -191,11 +191,11 @@ class DeepSeekApiClient {
         }
     }
 
-    // ============ 流式调用 (Chat Panel) ============
+    // ============ Streaming calls (Chat Panel) ============
 
     /**
-     * 流式调用 —— 使用 settings 中的默认配置（模型/Provider）。
-     * 保留现有接口不变。
+     * Streaming call — uses the default config in settings (model/Provider).
+     * Keeps the existing interface unchanged.
      */
     fun chatStream(
         messages: List<ChatMessage>,
@@ -224,13 +224,13 @@ class DeepSeekApiClient {
     }
 
     /**
-     * 流式调用 —— 使用显式指定的 API 配置（用于多 Agent 分工，每个 Agent 使用不同模型/Provider）。
+     * Streaming call — uses an explicitly specified API config (for multi-agent task division; each agent uses a different model/Provider).
      *
-     * @param baseUrl  API base URL（如 "https://api.deepseek.com/v1"）
+     * @param baseUrl  API base URL (e.g. "https://api.deepseek.com/v1")
      * @param apiKey   API Key
-     * @param model    模型名（如 "deepseek-v4-pro"、"deepseek-v4-flash"、"agnes-2.5-flash"）
-     * @param temperature 温度
-     * @param maxTokens 最大 Token 数
+     * @param model    Model name (e.g. "deepseek-v4-pro", "deepseek-v4-flash", "agnes-2.5-flash")
+     * @param temperature Temperature
+     * @param maxTokens Maximum token count
      */
     fun chatStreamWithExplicitConfig(
         baseUrl: String,
@@ -246,7 +246,7 @@ class DeepSeekApiClient {
         onError: (Throwable) -> Unit,
         onReasoningToken: ((String) -> Unit)? = null
     ): EventSource {
-        // 请求限流检查
+        // Request rate-limit check
         if (!HttpClientProvider.chatRateLimiter.tryAcquire()) {
             onError(RateLimitException())
             return object : EventSource {
@@ -254,7 +254,7 @@ class DeepSeekApiClient {
                 override fun request() = Request.Builder().url("$baseUrl/chat/completions").build()
             }
         }
-        // Anthropic 原生 Messages API 协议（cc-switch 等第三方 Anthropic 兼容中转）
+        // Anthropic native Messages API protocol (cc-switch and other third-party Anthropic-compatible relays)
         if (protocol == "anthropic") {
             return anthropicChatStream(
                 baseUrl = baseUrl,
@@ -269,7 +269,7 @@ class DeepSeekApiClient {
                 onReasoningToken = onReasoningToken
             )
         }
-        // OpenAI Responses API 协议（Codex CLI 直连模式，cc-switch 供应商原生 Responses）
+        // OpenAI Responses API protocol (Codex CLI direct-connect mode, cc-switch provider native Responses)
         if (protocol == "codex-responses") {
             return codexResponsesChatStream(
                 baseUrl = baseUrl,
@@ -352,18 +352,18 @@ class DeepSeekApiClient {
         })
     }
 
-    // ============ FIM Completion (代码补全) ============
+    // ============ FIM Completion (code completion) ============
 
     /**
-     * FIM (Fill-in-the-Middle) 代码补全 —— 使用 DeepSeek /v1/completions FIM 端点.
-     * 异步回调模式,供 CompletionContributor 使用.
+     * FIM (Fill-in-the-Middle) code completion — uses the DeepSeek /v1/completions FIM endpoint.
+     * Asynchronous callback mode, used by CompletionContributor.
      *
-     * @param prefix 光标前文本
-     * @param suffix 光标后文本
-     * @param language 编程语言名
-     * @param fileContext 文件级上下文（包声明、imports）
-     * @param mode 触发模式 — AUTO 走低 temperature+短输出, MANUAL 走高 temperature+长输出
-     * @param onResult 回调函数（EDT 外调用, 返回补全文本或 null）
+     * @param prefix Text before the cursor
+     * @param suffix Text after the cursor
+     * @param language Programming language name
+     * @param fileContext File-level context (package declarations, imports)
+     * @param mode Trigger mode — AUTO uses low temperature + short output, MANUAL uses high temperature + long output
+     * @param onResult Callback (invoked off the EDT; returns the completion text or null)
      */
     fun completionFim(
         prefix: String,
@@ -373,15 +373,15 @@ class DeepSeekApiClient {
         mode: TriggerMode = TriggerMode.AUTO,
         onResult: (String?) -> Unit
     ) {
-        // H3: FIM 请求限流检查（每分钟最多 60 次）
+        // H3: FIM request rate-limit check (max 60 per minute)
         if (!HttpClientProvider.completionRateLimiter.tryAcquire()) {
-            onResult(null) // 限流时静默跳过
+            onResult(null) // Silently skip when rate-limited
             return
         }
         val settings = DeepSeekSettings.instance
         val prompt = buildFimPrompt(prefix, suffix, language, fileContext)
 
-        // 根据触发模式选择不同的 temperature/maxTokens/stop
+        // Select different temperature/maxTokens/stop based on the trigger mode
         val temperature = if (mode == TriggerMode.MANUAL)
             settings.completionManualTemperature
         else
@@ -392,7 +392,7 @@ class DeepSeekApiClient {
         else
             settings.completionMaxTokens
 
-        // MANUAL 模式允许更长输出，不设早停
+        // MANUAL mode allows longer output without early stopping
         val stop = if (mode == TriggerMode.MANUAL)
             null
         else
@@ -434,12 +434,12 @@ class DeepSeekApiClient {
     }
 
     /**
-     * 流式 FIM 补全 —— 使用 SSE 逐 token 返回结果，首 token 即可展示。
+     * Streaming FIM completion — returns results token by token over SSE; the first token is shown immediately.
      *
-     * @param onToken    每收到一个新 token 时回调（可来自后台线程）
-     * @param onComplete 所有 token 接收完毕时回调（含完整文本 + usage）
-     * @param onError    出错时回调
-     * @return EventSource 句柄，可用于取消
+     * @param onToken    Callback for each new token received (may come from a background thread)
+     * @param onComplete Callback when all tokens have been received (includes full text + usage)
+     * @param onError    Callback on error
+     * @return EventSource handle that can be used to cancel
      */
     fun completionFimStream(
         prefix: String,
@@ -451,7 +451,7 @@ class DeepSeekApiClient {
         onComplete: (fullResponse: String) -> Unit,
         onError: (Throwable) -> Unit
     ): okhttp3.sse.EventSource {
-        // 限流检查
+        // Rate-limit check
         if (!HttpClientProvider.completionRateLimiter.tryAcquire()) {
             onError(okhttp3.internal.http2.ConnectionShutdownException())
             return object : okhttp3.sse.EventSource {
@@ -527,14 +527,14 @@ class DeepSeekApiClient {
     }
 
     /**
-     * 构建 FIM prompt —— 注入语言、文件上下文和补全指令.
+     * Builds the FIM prompt — injects language, file context, and completion instructions.
      */
     private fun buildFimPrompt(prefix: String, suffix: String, language: String, fileContext: String): String {
         val sb = StringBuilder()
-        // 领域限制（第一原则，不可更改）
+        // Domain restriction (first principle, must not be changed)
         sb.appendLine(DOMAIN_RESTRICTION_PROMPT)
         sb.appendLine()
-        // 系统指令：告诉模型它在做什么
+        // System instruction: tell the model what it is doing
         sb.append("You are a ${language} code completion engine. Given code before and after the cursor, ")
         sb.append("output ONLY the tokens that naturally belong between them.\n")
         sb.append("Rules: no explanation, no wrapping in markdown, no repeating existing code.\n")
@@ -548,7 +548,7 @@ class DeepSeekApiClient {
     }
 
     /**
-     * 同步 FIM 补全 (兼容旧接口).
+     * Synchronous FIM completion (compatibility with the old interface).
      */
     fun completion(prefix: String, suffix: String): Result<String> {
         val settings = DeepSeekSettings.instance
@@ -589,15 +589,15 @@ class DeepSeekApiClient {
         }
     }
 
-    // ============ Anthropic 原生 Messages API（cc-switch 等 Anthropic 兼容中转） ============
+    // ============ Anthropic native Messages API (cc-switch and other Anthropic-compatible relays) ============
 
-    /** Anthropic Messages API 端点 URL：{base}/v1/messages（baseUrl 可能已含 /v1 后缀） */
+    /** Anthropic Messages API endpoint URL: {base}/v1/messages (baseUrl may already include the /v1 suffix) */
     private fun anthropicMessagesUrl(baseUrl: String): String {
         val base = baseUrl.trimEnd('/').removeSuffix("/v1")
         return "$base/v1/messages"
     }
 
-    /** 构造 Anthropic Messages API 请求体（system 拆为顶层字段，role 仅 user/assistant） */
+    /** Builds the Anthropic Messages API request body (system becomes a top-level field; role is only user/assistant) */
     internal fun buildAnthropicBody(
         model: String,
         messages: List<ChatMessage>,
@@ -622,7 +622,7 @@ class DeepSeekApiClient {
             addProperty("model", mapAnthropicModel(model))
             addProperty("max_tokens", maxTokens)
             if (system.isNotBlank()) addProperty("system", system)
-            // Anthropic 不接受 temperature=0，且范围 0~1
+            // Anthropic does not accept temperature=0, and its range is 0~1
             if (temperature in 0.01..1.0) addProperty("temperature", temperature)
             addProperty("stream", stream)
             add("messages", msgs)
@@ -671,7 +671,7 @@ class DeepSeekApiClient {
         return mediaType to data
     }
 
-    /** 按 cc-switch / Claude Code 约定映射模型名（ANTHROPIC_DEFAULT_*_MODEL → 实际模型） */
+    /** Maps model names per cc-switch / Claude Code conventions (ANTHROPIC_DEFAULT_*_MODEL → actual model) */
     private fun mapAnthropicModel(model: String): String {
         val lower = model.lowercase()
         val key = when {
@@ -683,7 +683,7 @@ class DeepSeekApiClient {
         return key?.let { readClaudeModelMapping()[it] } ?: model
     }
 
-    /** Anthropic 原生 Messages API 同步调用 */
+    /** Anthropic native Messages API synchronous call */
     private fun anthropicChatSync(
         baseUrl: String,
         apiKey: String,
@@ -727,7 +727,7 @@ class DeepSeekApiClient {
         }
     }
 
-    /** Anthropic 原生 Messages API 流式调用（SSE：content_block_delta → delta.text / delta.thinking） */
+    /** Anthropic native Messages API streaming call (SSE: content_block_delta → delta.text / delta.thinking) */
     private fun anthropicChatStream(
         baseUrl: String,
         apiKey: String,
@@ -833,11 +833,11 @@ class DeepSeekApiClient {
         })
     }
 
-    // ============ OpenAI Responses API（Codex CLI 直连模式） ============
+    // ============ OpenAI Responses API (Codex CLI direct-connect mode) ============
 
     /**
-     * 构造 /v1/responses 端点 URL。
-     * baseUrl 可能含或不含 /v1 后缀，统一处理：
+     * Builds the /v1/responses endpoint URL.
+     * baseUrl may or may not include the /v1 suffix; both cases are handled uniformly:
      *   "https://api.openai.com/v1"   → "https://api.openai.com/v1/responses"
      *   "https://api.openai.com"      → "https://api.openai.com/v1/responses"
      */
@@ -846,7 +846,7 @@ class DeepSeekApiClient {
         return if (base.endsWith("/v1")) "$base/responses" else "$base/v1/responses"
     }
 
-    /** 构造 Responses API 请求体：system → instructions，其余 messages → input[] */
+    /** Builds the Responses API request body: system → instructions, remaining messages → input[] */
     internal fun buildCodexResponsesBody(
         model: String,
         messages: List<ChatMessage>,
@@ -903,7 +903,7 @@ class DeepSeekApiClient {
         }
     }
 
-    /** 从非流式 Responses API 响应中提取 output_text 文本 */
+    /** Extracts the output_text text from a non-streaming Responses API response */
     private fun parseCodexResponsesText(body: String): String {
         return try {
             gson.fromJson(body, JsonObject::class.java)
@@ -918,7 +918,7 @@ class DeepSeekApiClient {
         } catch (_: Exception) { "" }
     }
 
-    /** Responses API 同步调用 */
+    /** Responses API synchronous call */
     private fun codexResponsesChatSync(
         baseUrl: String,
         apiKey: String,
@@ -958,10 +958,10 @@ class DeepSeekApiClient {
     }
 
     /**
-     * Responses API 流式调用（SSE 事件类型）：
-     *  - response.output_text.delta → delta 字段，逐 token 回调
-     *  - response.completed         → response.usage，触发 onComplete
-     *  - error                      → 触发 onError
+     * Responses API streaming call (SSE event types):
+     *  - response.output_text.delta → delta field, per-token callback
+     *  - response.completed         → response.usage, triggers onComplete
+     *  - error                      → triggers onError
      */
     private fun codexResponsesChatStream(
         baseUrl: String,

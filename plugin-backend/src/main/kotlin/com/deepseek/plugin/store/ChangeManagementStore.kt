@@ -8,14 +8,14 @@ import java.io.File
 import java.util.Base64
 
 /**
- * 变更管理存储 — 按项目隔离，持久化到 `.idea/deepseek-changes.json`。
+ * Change management store — isolated per project, persisted to `.idea/deepseek-changes.json`.
  *
- * 参考 [com.deepseek.plugin.settings.SkillStore] 的文件持久化模式：
- * - 每个项目独立的 `.idea/` 目录下的 JSON 文件
- * - 构造时加载，每次修改后立即保存
- * - 重新打开项目时变更记录自动恢复
+ * Follows the file persistence pattern of [com.deepseek.plugin.settings.SkillStore]:
+ * - A JSON file under each project's own `.idea/` directory
+ * - Loaded on construction, saved immediately after every modification
+ * - Change records are restored automatically when the project is reopened
  *
- * 备份的原始文件内容以 Base64 编码存储在 JSON 中。
+ * The backed-up original file content is stored Base64-encoded in the JSON.
  */
 @Service(Service.Level.PROJECT)
 class ChangeManagementStore(project: Project) {
@@ -27,10 +27,10 @@ class ChangeManagementStore(project: Project) {
 
     private val gson = Gson()
 
-    /** 所有变更记录（按时间倒序，最新的在前） */
+    /** All change records (reverse chronological; newest first) */
     private val _records = mutableListOf<ChangeRecord>()
 
-    /** 对外只读视图 */
+    /** Read-only view exposed to the outside */
     val records: List<ChangeRecord> get() = _records.toList()
 
     init {
@@ -38,7 +38,7 @@ class ChangeManagementStore(project: Project) {
     }
 
     /**
-     * 添加一条新的变更记录并持久化。
+     * Adds a new change record and persists it.
      */
     fun addRecord(record: ChangeRecord) {
         _records.add(0, record)
@@ -46,7 +46,7 @@ class ChangeManagementStore(project: Project) {
     }
 
     /**
-     * 移除指定变更记录并持久化。
+     * Removes the specified change record and persists.
      */
     fun removeRecord(record: ChangeRecord) {
         _records.remove(record)
@@ -54,7 +54,7 @@ class ChangeManagementStore(project: Project) {
     }
 
     /**
-     * 清空所有变更记录并持久化。
+     * Clears all change records and persists.
      */
     fun clearAll() {
         _records.clear()
@@ -62,10 +62,10 @@ class ChangeManagementStore(project: Project) {
     }
 
     /**
-     * 根据 FileChangeInfo 回滚文件：
-     * - 新建文件（isNew=true）：删除文件
-     * - 修改文件（isNew=false）：将原始内容写回磁盘
-     * @return true 表示回滚成功，false 表示失败
+     * Rolls back files based on FileChangeInfo:
+     * - Newly created file (isNew=true): delete the file
+     * - Modified file (isNew=false): write the original content back to disk
+     * @return true means rollback succeeded, false means it failed
      */
     fun rollbackFile(change: FileChangeInfo): Boolean {
         return try {
@@ -96,10 +96,10 @@ class ChangeManagementStore(project: Project) {
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  文件持久化 — JSON (与 SkillStore 相同的模式)
+    //  File persistence — JSON (same pattern as SkillStore)
     // ════════════════════════════════════════════════════════════════
 
-    /** 从 JSON 文件加载变更记录 */
+    /** Loads change records from the JSON file */
     private fun load() {
         val file = storeFile ?: return
         if (!file.exists()) return
@@ -130,7 +130,7 @@ class ChangeManagementStore(project: Project) {
         }
     }
 
-    /** 将变更记录保存到 JSON 文件 */
+    /** Saves change records to the JSON file */
     private fun save() {
         val file = storeFile ?: return
         try {
@@ -155,7 +155,7 @@ class ChangeManagementStore(project: Project) {
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  JSON 序列化 DTO（Base64 编码文件内容）
+    //  JSON serialization DTO (Base64-encoded file content)
     // ════════════════════════════════════════════════════════════════
 
     private data class ChangeRecordData(
@@ -166,7 +166,7 @@ class ChangeManagementStore(project: Project) {
 
     private data class FileChangeData(
         val filePath: String,
-        val originalContent: String, // Base64 编码
+        val originalContent: String, // Base64 encoded
         val isNew: Boolean,
         val timestamp: Long
     )

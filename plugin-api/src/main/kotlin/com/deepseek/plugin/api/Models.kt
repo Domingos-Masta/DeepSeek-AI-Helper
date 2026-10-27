@@ -18,7 +18,7 @@ data class ChatRequest(
 data class ChatMessage(
     val role: String,  // "system", "user", "assistant"
     val content: String,
-    /** 模型的深度思考过程（reasoning_content），仅在 role="assistant" 时有值 */
+    /** The model's deep reasoning process (reasoning_content), only has a value when role="assistant" */
     val reasoning: String? = null,
     /**
      * Optional structured content used by provider-native multimodal APIs.
@@ -43,7 +43,7 @@ data class ChatContentPart(
     val name: String? = null
 )
 
-// ── 多模态消息（支持 text + image_url 混合 content）──
+// ── Multimodal message (supports text + image_url mixed content) ──
 
 data class MultimodalContent(
     val type: String,  // "text" | "image_url"
@@ -81,7 +81,7 @@ data class Choice(
 data class Delta(
     val role: String? = null,
     val content: String? = null,
-    /** DeepSeek 等模型在 SSE 流中发送的深度思考内容，与 content 互斥出现 */
+    /** Deep reasoning content sent in the SSE stream by models such as DeepSeek, mutually exclusive with content */
     @SerializedName("reasoning_content") val reasoningContent: String? = null
 )
 
@@ -121,7 +121,7 @@ data class FimChoice(
     @SerializedName("finish_reason") val finishReason: String?
 )
 
-/** FIM 流式 SSE 响应中的单条 chunk */
+/** A single chunk in the FIM streaming SSE response */
 data class FimStreamChunk(
     val id: String? = null,
     val `object`: String? = null,

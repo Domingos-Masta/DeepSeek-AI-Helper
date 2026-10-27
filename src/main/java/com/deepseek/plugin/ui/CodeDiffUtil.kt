@@ -24,16 +24,16 @@ import javax.swing.JPanel
 import javax.swing.SwingConstants
 
 /**
- * 代码变更预览工具类。
+ * Code change preview utility.
  *
- * 流程：
- * 1. 使用 side-by-side 对比面板展示原始代码与生成代码
- * 2. 用户审查后决定是否「应用更改」
+ * Workflow:
+ * 1. Show original code and generated code in a side-by-side comparison panel
+ * 2. The user reviews and decides whether to "Apply changes"
  */
 object CodeDiffUtil {
 
     /**
-     * 单个文件的 diff 变更信息。
+     * Diff change information for a single file.
      */
     data class FileDiffItem(
         val filePath: String,
@@ -43,12 +43,12 @@ object CodeDiffUtil {
     )
 
     /**
-     * 展示 diff 对比并询问用户是否应用更改。
+     * Shows the diff comparison and asks the user whether to apply the changes.
      *
-     * @param project 当前项目
-     * @param originalCode 原始代码
-     * @param newCode 新生成的代码
-     * @param onApply 用户确认后执行的回调（在 EDT 中调用）
+     * @param project The current project.
+     * @param originalCode Original code.
+     * @param newCode Newly generated code.
+     * @param onApply Callback executed after user confirmation (called on the EDT).
      */
     @JvmStatic
     fun showDiffAndApply(
@@ -64,14 +64,14 @@ object CodeDiffUtil {
     }
 
     /**
-     * 展示 diff 对比并返回用户是否确认应用更改。
-     * 代码无变化时自动返回 true（无需确认）。
+     * Shows the diff comparison and returns whether the user confirmed applying the changes.
+     * Automatically returns true when the code is unchanged (no confirmation needed).
      *
-     * @param project 当前项目
-     * @param originalCode 原始代码
-     * @param newCode 新生成的代码
-     * @param filePath 可选的文件路径，用于对话框标题
-     * @return true 表示用户确认应用，false 表示跳过
+     * @param project The current project.
+     * @param originalCode Original code.
+     * @param newCode Newly generated code.
+     * @param filePath Optional file path used for the dialog title.
+     * @return true if the user confirmed applying, false to skip.
      */
     @JvmStatic
     fun showDiffAndConfirm(
@@ -81,15 +81,15 @@ object CodeDiffUtil {
         filePath: String? = null
     ): Boolean {
         if (originalCode == newCode) {
-            return true // 无变化，自动确认
+            return true // no change, auto-confirm
         }
         val dialog = DiffPreviewDialog(project, originalCode, newCode, filePath)
         return dialog.showAndGet()
     }
 
     /**
-     * 展示 diff 对比并询问用户是否应用更改。
-     * 代码无变化时自动跳过。
+     * Shows the diff comparison and asks whether to apply the changes.
+     * Automatically skips when the code is unchanged.
      */
     @JvmStatic
     fun showDiffIfChanged(
@@ -107,29 +107,29 @@ object CodeDiffUtil {
     }
 
     /**
-     * 批量展示所有文件的变更对比，一个汇总列表，每个文件可展开查看 diff。
-     * 用户确认后统一执行所有变更。
+     * Batch-shows the change comparison for all files as a summary list, where each
+     * file can be expanded to view its diff. After user confirmation, all changes are applied.
      *
-     * @param project 当前项目
-     * @param items 所有文件的变更信息列表
-     * @return true 表示用户确认执行全部变更，false 表示取消
+     * @param project The current project.
+     * @param items List of change information for all files.
+     * @return true if the user confirmed applying all changes, false to cancel.
      */
     @JvmStatic
     fun showBatchDiffAndConfirm(
         project: Project,
         items: List<FileDiffItem>
     ): Boolean {
-        // 过滤出有实际变化的文件
+        // Filter out files that actually changed
         val changedItems = items.filter { it.originalContent != it.newContent }
         if (changedItems.isEmpty()) {
-            return true // 无变化，自动确认
+            return true // no change, auto-confirm
         }
         val dialog = BatchDiffDialog(project, changedItems)
         return dialog.showAndGet()
     }
 
     // ================================================================
-    // 单文件 diff 预览对话框
+    // Single-file diff preview dialog
     // ================================================================
 
     private class DiffPreviewDialog(
@@ -156,13 +156,13 @@ object CodeDiffUtil {
             panel.border = JBUI.Borders.empty(8)
             panel.preferredSize = Dimension(800, 500)
 
-            // ── 标题行 ──
+            // ── Title row ──
             val headerPanel = JPanel(GridLayout(1, 2))
             headerPanel.add(createHeaderLabel(I18n.tr("diff.original"), JBColor(0x666666, 0xBBBBBB)))
             headerPanel.add(createHeaderLabel(I18n.tr("diff.generated"), JBColor(0x4477AA, 0x6699CC)))
             panel.add(headerPanel, BorderLayout.NORTH)
 
-            // ── 左右对比区域 ──
+            // ── Left-right comparison area ──
             val diffPanel = JPanel(GridLayout(1, 2, 8, 0))
             diffPanel.add(createCodePanel(originalCode, JBColor(0xF5F5F5, 0x1E1E22)))
             diffPanel.add(createCodePanel(newCode, JBColor(0xF0F7F0, 0x1E2A1E)))
@@ -202,7 +202,7 @@ object CodeDiffUtil {
     }
 
     // ================================================================
-    // 批量 diff 预览对话框 — 汇总列表 + 可展开查看每个文件的 diff
+    // Batch diff preview dialog — summary list + expandable diff view per file
     // ================================================================
 
     private class BatchDiffDialog(
@@ -223,7 +223,7 @@ object CodeDiffUtil {
             outerPanel.border = JBUI.Borders.empty(8)
             outerPanel.preferredSize = Dimension(880, 550)
 
-            // ── 文件列表卡片区域（可滚动） ──
+            // ── File list card area (scrollable) ──
             val cardPanel = JPanel()
             cardPanel.layout = BoxLayout(cardPanel, BoxLayout.Y_AXIS)
             cardPanel.border = JBUI.Borders.empty(4)
@@ -246,7 +246,7 @@ object CodeDiffUtil {
         }
 
         /**
-         * 单个文件的变更卡片：标题行 + 可折叠的 diff 对比面板。
+         * Change card for a single file: title row + collapsible diff comparison panel.
          */
         private inner class FileDiffCard(
             private val item: FileDiffItem
@@ -260,13 +260,13 @@ object CodeDiffUtil {
                 val bg = JBColor(0xFAFAFA, 0x2B2B2B)
                 background = bg
 
-                // ── 标题行 ──
+                // ── Title row ──
                 val headerPanel = JPanel(BorderLayout()).apply {
                     background = bg
                     border = JBUI.Borders.empty(4, 8, 4, 8)
                 }
 
-                // 文件路径 + 操作标识
+                // File path + action marker
                 val actionLabel = if (item.action == "write" && item.originalContent.isEmpty()) {
                     "  🆕"
                 } else if (item.action == "delete") {
@@ -281,7 +281,7 @@ object CodeDiffUtil {
                 }
                 headerPanel.add(nameLabel, BorderLayout.WEST)
 
-                // 展开/折叠按钮
+                // Expand/collapse button
                 expandBtn = JButton(I18n.tr("diff.batch.expand")).apply {
                     font = font.deriveFont(11f)
                     border = JBUI.Borders.empty(2, 12)
@@ -294,7 +294,7 @@ object CodeDiffUtil {
 
                 add(headerPanel, BorderLayout.NORTH)
 
-                // ── diff 对比面板（初始隐藏） ──
+                // ── diff comparison panel (initially hidden) ──
                 diffPanel = createDiffContentPanel(item.originalContent, item.newContent)
                 diffPanel.isVisible = false
                 add(diffPanel, BorderLayout.CENTER)
@@ -304,9 +304,9 @@ object CodeDiffUtil {
                 diffVisible = !diffVisible
                 diffPanel.isVisible = diffVisible
                 expandBtn.text = if (diffVisible) I18n.tr("diff.batch.collapse") else I18n.tr("diff.batch.expand")
-                // 通知父容器刷新布局
+                // Notify the parent container to refresh layout
                 revalidate()
-                // 找到最外层的 JScrollPane 并滚动到可见区域
+                // Find the outermost JScrollPane and scroll the card into view
                 if (diffVisible) {
                     scrollRectToVisible(bounds)
                 }
@@ -316,13 +316,13 @@ object CodeDiffUtil {
                 val panel = JPanel(BorderLayout())
                 panel.border = JBUI.Borders.empty(4, 8, 8, 8)
 
-                // 标题行
+                // Title row
                 val headerPanel = JPanel(GridLayout(1, 2))
                 headerPanel.add(createBatchHeaderLabel(I18n.tr("diff.original"), JBColor(0x666666, 0xBBBBBB)))
                 headerPanel.add(createBatchHeaderLabel(I18n.tr("diff.generated"), JBColor(0x4477AA, 0x6699CC)))
                 panel.add(headerPanel, BorderLayout.NORTH)
 
-                // 左右对比
+                // Left-right comparison
                 val diffContent = JPanel(GridLayout(1, 2, 8, 0))
                 diffContent.add(createCodePanel(originalCode, JBColor(0xF5F5F5, 0x1E1E22)))
                 diffContent.add(createCodePanel(newCode, JBColor(0xF0F7F0, 0x1E2A1E)))

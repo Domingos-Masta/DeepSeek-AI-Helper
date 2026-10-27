@@ -60,7 +60,7 @@ class UnifiedSettingsPanel(
         border = JBUI.Borders.empty()
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
 
-        // ── 订阅语言切换事件：刷新导航按钮 tooltip 等悬浮文字 ──
+        // ── Subscribe to language-change events: refresh hover text such as nav button tooltips ──
         project.messageBus.connect().subscribe(
             I18nTopics.LANGUAGE_CHANGED,
             object : LanguageChangeListener {
@@ -95,7 +95,7 @@ class UnifiedSettingsPanel(
         showPage("themeSettings")
     }
 
-    /** 构建所有设置子页面并加入 contentPanel（主题切换后重建用）。 */
+    /** Builds all settings sub-pages and adds them to contentPanel (used to rebuild after a theme change). */
     private fun buildContentPanels() {
         // Theme Settings page
         contentPanel.add(ThemeSettingsPanel(), "themeSettings")
@@ -228,7 +228,7 @@ class UnifiedSettingsPanel(
      * Get all currently enabled skills' content as a combined string.
      * Delegates to the embedded [SkillSettingsPanel].
      *
-     * @param userMessage 用戶當前問題，用於按需過濾相關技能。空字符串時全量注入。
+     * @param userMessage the user's current question, used to filter relevant skills on demand. An empty string injects all of them.
      */
     fun getEnabledSkillsContent(userMessage: String = ""): String {
         return skillSettingsPanel.getEnabledSkillsContent(userMessage)

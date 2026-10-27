@@ -29,7 +29,7 @@ class ChatContextComposerTest {
     fun `isCodeQuery detects code keywords`() {
         assertTrue(ChatContextComposer.isCodeQuery("How to create a repository?"))
         assertTrue(ChatContextComposer.isCodeQuery("What is the service interface?"))
-        assertTrue(ChatContextComposer.isCodeQuery("这个接口怎么实现？"))
+        assertTrue(ChatContextComposer.isCodeQuery("How is this interface implemented?"))
     }
 
     @Test
@@ -46,7 +46,7 @@ class ChatContextComposerTest {
 
     @Test
     fun `extractSearchKeywords finds quoted strings`() {
-        val keywords = ChatContextComposer.extractSearchKeywords("Search for "getUserById" in the codebase")
+        val keywords = ChatContextComposer.extractSearchKeywords("Search for \"getUserById\" in the codebase")
         assertTrue(keywords.contains("getUserById"))
     }
 

@@ -36,7 +36,7 @@ class FileOperationExecutor(
     fun parseFileOperations(response: String): List<FileOperation> {
         val operations = mutableListOf<FileOperation>()
 
-        // 正则1：带 ```代码围栏``` 的标准格式（兼容 CRLF、多余空白）
+        // Regex 1: standard format with ```code fences``` (handles CRLF and extra whitespace)
         val fileRegex = Regex(
             """<file\s+path="([^"]+)"(?:\s+action="([^"]*)")?\s*>(?:\r?\n)?\s*```(\w+)?\s*(?:\r?\n)?\s*([\s\S]*?)\s*```\s*(?:\r?\n)?\s*</file>""",
             RegexOption.MULTILINE
@@ -48,7 +48,7 @@ class FileOperationExecutor(
             operations.add(FileOperation(path, content, action))
         }
 
-        // 正则2：不带 ```围栏``` 的简洁格式（纯文本/配置文件）
+        // Regex 2: simple format without ```fences``` (plain text / config files)
         val simpleFileRegex = Regex(
             """<file\s+path="([^"]+)"(?:\s+action="([^"]*)")?\s*>([\s\S]*?)</file>""",
             RegexOption.MULTILINE
@@ -62,7 +62,7 @@ class FileOperationExecutor(
             }
         }
 
-        // 调试日志
+        // Debug log
         if (operations.isEmpty() && response.contains("<file")) {
             System.err.println("[Agent] parseFileOperations: found <file> tags but no regex matched. Response snippet: ${response.take(500)}")
         } else if (operations.isNotEmpty()) {
@@ -144,7 +144,7 @@ class FileOperationExecutor(
             return
         }
 
-        // 收集所有文件变更，在一个汇总对话框中统一展示
+        // Collect all file changes and present them in a single summary dialog
         val fileDiffs = safeOps.filter { it.action != "delete" }.mapNotNull { op ->
             val targetFile = File(projectBasePath, op.path)
             val resolvedFile = resolveToExistingSourceRoot(targetFile)
@@ -158,16 +158,16 @@ class FileOperationExecutor(
         val allConfirmed = if (fileDiffs.isNotEmpty()) {
             CodeDiffUtil.showBatchDiffAndConfirm(project, fileDiffs)
         } else {
-            true // 只有删除操作，无需展示 diff
+            true // Delete-only operations; no diff to show
         }
 
         if (!allConfirmed) {
             addMessageLabel(I18n.tr("chat.agent.cancelled"))
             return
         }
-        val finalOps = safeOps // 用户确认后执行所有变更
+        val finalOps = safeOps // Execute all changes after user confirmation
 
-        // 收集结果和文件变更
+        // Collect results and file changes
         var resultMsg = ""
         var hasModifiedFiles = false
 
@@ -236,7 +236,7 @@ class FileOperationExecutor(
                                 fileChanges.add(FileChangeInfo(effectiveFile.absolutePath, ByteArray(0), isNew = true))
                             }
                         } else {
-                            // 备份原始内容
+                            // Back up original content
                             try {
                                 val originalBytes = effectiveFile.readBytes()
                                 fileChanges.add(FileChangeInfo(effectiveFile.absolutePath, originalBytes))
@@ -281,14 +281,14 @@ class FileOperationExecutor(
                 if (modified > 0) appendLine(I18n.tr("chat.modified.files") + " " + modified + I18n.tr("chat.count.suffix"))
                 if (deleted > 0) appendLine(I18n.tr("chat.deleted.files") + " " + deleted + I18n.tr("chat.count.suffix"))
                 if (created == 0 && modified == 0 && deleted == 0) {
-                    appendLine("- (没有文件操作被应用)")
+                    appendLine("- (No file operations were applied)")
                 }
             }
             if (fileChanges.isNotEmpty()) {
                 val semanticTitle = planResponse?.let { plan ->
                     val skipPatterns = listOf(
-                        "输出格式", "项目结构", "相关源文件", "源码根目录",
-                        "分析", "计划", "注意事项", "依赖关系", "规则"
+                        "Output Format", "Project Structure", "Relevant Source Files", "Source Root",
+                        "Analysis", "Plan", "Notes", "Dependencies", "Rules"
                     )
                     plan.lines().firstOrNull { line ->
                         val trimmed = line.trim()
@@ -303,12 +303,12 @@ class FileOperationExecutor(
                     val allPaths = finalOps.map { it.path.substringAfterLast("/").substringAfterLast("\\") }
                     val totalChanged = created + modified + deleted
                     if (totalChanged <= 2) {
-                        allPaths.joinToString("、")
+                        allPaths.joinToString(", ")
                     } else {
                         buildString {
-                            if (created > 0) append("新建 ${created} 个文件")
-                            if (modified > 0) { if (isNotEmpty()) append("，"); append("修改 ${modified} 个文件") }
-                            if (deleted > 0) { if (isNotEmpty()) append("，"); append("删除 ${deleted} 个文件") }
+                            if (created > 0) append("Created ${created} file(s)")
+                            if (modified > 0) { if (isNotEmpty()) append(", "); append("Modified ${modified} file(s)") }
+                            if (deleted > 0) { if (isNotEmpty()) append(", "); append("Deleted ${deleted} file(s)") }
                         }
                     }
                 }

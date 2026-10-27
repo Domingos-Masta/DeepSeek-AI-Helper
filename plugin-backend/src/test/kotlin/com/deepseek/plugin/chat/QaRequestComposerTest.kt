@@ -59,7 +59,7 @@ class QaRequestComposerTest {
         val request = QaRequestComposer.compose(
             systemPrompt = "system",
             history = history,
-            transientContext = "上下文".repeat(4_000),
+            transientContext = "context".repeat(4_000),
             budget = QaRequestBudget(2_500, 500),
             currentUserParts = listOf(image)
         )

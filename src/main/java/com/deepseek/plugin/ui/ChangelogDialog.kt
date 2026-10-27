@@ -121,7 +121,7 @@ class ChangelogDialog(
         }
         root.add(scrollPane, BorderLayout.CENTER)
 
-        // ── 首次安装时显示 API 配置引导链接 ──
+        // ── Show the API configuration guide link on first install ──
         if (previousVersion == null) {
             val isEn = selectedLanguage == "en"
             val setupLink = JLabel("<html><a href='#'>⚙ " + (if (isEn) I18n.tr("changelog.setup.en") else I18n.tr("changelog.setup.zh")) + "</a></html>")

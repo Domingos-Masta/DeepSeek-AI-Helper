@@ -15,12 +15,12 @@ import javax.swing.JPanel
  *
  * Layout:
  * ┌──────────────────────────────────────┐
- * │ [▼ 会话 1]  [+]  [🗑]               │
+ * │ [▼ Session 1]  [+]  [🗑]            │
  * └──────────────────────────────────────┘
  *
  * @param sessionComboBox   The combo box with session names.
- * @param onNewSession      Called when "新建会话" is clicked.
- * @param onClearCurrent    Called when "清除当前会话" is clicked.
+ * @param onNewSession      Called when "New session" is clicked.
+ * @param onClearCurrent    Called when "Clear current session" is clicked.
  */
 class SessionBar(
     private val sessionComboBox: JComboBox<String>,
@@ -41,7 +41,7 @@ class SessionBar(
                 if (w > maxWidth) maxWidth = w
             }
             // fallback for empty combo
-            if (maxWidth == 0) maxWidth = metrics.stringWidth("会话 99")
+            if (maxWidth == 0) maxWidth = metrics.stringWidth("Session 99")
             // add padding for arrow button + insets + rendering margin (56px unscaled)
             return JBUI.scale(maxWidth + 56)
         }

@@ -9,7 +9,7 @@ import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.wm.ToolWindowManager
 
 /**
- * 打开主题设置页面，方便用户设置右键输出语言。
+ * Opens the theme settings page so the user can configure the right-click output language.
  */
 class SetLanguageAction : AnAction(), DumbAware {
 
@@ -23,12 +23,12 @@ class SetLanguageAction : AnAction(), DumbAware {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
 
-        // 激活工具窗口
+        // Activate the tool window
         val toolWindow = ToolWindowManager.getInstance(project)
-            .getToolWindow("DeepSeek AI CodeHelper")
+            .getToolWindow("DeepSeek-AI-Helper")
         toolWindow?.activate(null)
 
-        // 导航到主题设置页
+        // Navigate to the theme settings page
         ChatPanel.currentInstance?.showSettingsPage("themeSettings")
     }
 }

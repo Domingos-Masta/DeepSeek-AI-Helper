@@ -250,7 +250,7 @@ class ExternalMcpSettingsPanel : JPanel() {
 
         if (name.isBlank() || url.isBlank()) {
             JOptionPane.showMessageDialog(this,
-                if (I18n.currentLang == "zh") "名称和 URL/命令为必填项。" else "Name and URL/Command are required.",
+                if (I18n.currentLang == "zh") "Name and URL/Command are required." else "Name and URL/Command are required.",
                 "Error", JOptionPane.ERROR_MESSAGE)
             return
         }
@@ -271,7 +271,7 @@ class ExternalMcpSettingsPanel : JPanel() {
             testConn.disconnect()
         } else {
             val msg = testConn.statusMessage
-            val warningMsg = if (I18n.currentLang == "zh") "连接测试失败: $msg\n\n仍然保存？" else "Connection test failed: $msg\n\nSave anyway?"
+            val warningMsg = if (I18n.currentLang == "zh") "Connection test failed: $msg\n\nSave anyway?" else "Connection test failed: $msg\n\nSave anyway?"
             val retry = JOptionPane.showConfirmDialog(this, warningMsg, "Connection Test", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE)
             if (retry != JOptionPane.YES_OPTION) return
         }
@@ -284,7 +284,7 @@ class ExternalMcpSettingsPanel : JPanel() {
             }
         } else {
             if (store.servers.any { it.name == name }) {
-                val dupMsg = if (I18n.currentLang == "zh") "服务器名称 '$name' 已存在。" else "A server with name '$name' already exists."
+                val dupMsg = if (I18n.currentLang == "zh") "A server with name '$name' already exists." else "A server with name '$name' already exists."
                 JOptionPane.showMessageDialog(this, dupMsg, "Error", JOptionPane.ERROR_MESSAGE)
                 return
             }

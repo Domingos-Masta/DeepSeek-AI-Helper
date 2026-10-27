@@ -19,15 +19,15 @@ import javax.swing.SwingConstants
 import javax.swing.border.EmptyBorder
 
 /**
- * 完整一体化暗色表格组件。
+ * Complete all-in-one dark table component.
  *
- * 特性：
- * - paintComponent 统一绘制全部横竖网格线，无双重边框、无断裂
- * - GridBagLayout 全局布局，每列宽度严格对齐
- * - 表头加粗高亮，数据行自动换行
- * - 单元格内可嵌彩色标识（绿色 ✓ / 红色 ✕），居中摆放
- * - 长文本自动换行，不溢出、不截断
- * - 统一内边距，垂直居中
+ * Features:
+ * - paintComponent draws all horizontal and vertical grid lines uniformly, with no double borders or breaks
+ * - GridBagLayout global layout keeps every column strictly aligned
+ * - Bold, highlighted headers with auto-wrapping data rows
+ * - Cells can embed colored markers (green ✓ / red ✕), centered
+ * - Long text wraps automatically without overflow or truncation
+ * - Uniform padding, vertically centered
  */
 class MessageTable(
     headers: List<String>,
@@ -49,8 +49,8 @@ class MessageTable(
         colCount = headers.size
         rowCount = rows.size
 
-        // ── 用 GridBagLayout 构建全部单元格 ──
-        // 表头行
+        // ── Build all cells with GridBagLayout ──
+        // Header row
         for (col in 0 until colCount) {
             val headerText = headers.getOrElse(col) { "" }
             val cell = createCell(headerText, isHeader = true, row = 0, col = col)
@@ -58,7 +58,7 @@ class MessageTable(
             add(cell, gbc)
         }
 
-        // 数据行
+        // Data rows
         for (row in 0 until rowCount) {
             val rowData = rows.getOrElse(row) { emptyList() }
             for (col in 0 until colCount) {
@@ -77,7 +77,7 @@ class MessageTable(
             weightx = 1.0
             weighty = 0.0
             fill = GridBagConstraints.BOTH
-            // 无 insets — 网格线由 paintComponent 统一绘制
+            // No insets — grid lines are drawn uniformly by paintComponent
             insets = java.awt.Insets(0, 0, 0, 0)
         }
     }
@@ -86,14 +86,14 @@ class MessageTable(
         val isMarker = text.matches(Regex("\\s*[✓✔✅✕×❌]\\s*"))
 
         val contentComponent: Component = if (isHeader || isMarker) {
-            // 表头或纯标识单元格 → 居中 JLabel
+            // Header or pure-marker cell → centered JLabel
             val label = JLabel(formatCellText(text), SwingConstants.CENTER).apply {
                 font = this.font.deriveFont(if (isHeader) Font.BOLD else Font.PLAIN, 12f)
                 foreground = if (isHeader) headerFg else cellFg
             }
             label
         } else {
-            // 数据单元格 → 自动换行 JBTextArea
+            // Data cell → auto-wrapping JBTextArea
             val ta = JBTextArea(text).apply {
                 isEditable = false
                 isFocusable = false
@@ -116,7 +116,7 @@ class MessageTable(
                 g2.color = if (isHeader) headerBg else cellBg
                 g2.fillRect(0, 0, width, height)
 
-                // 如果是标识单元格，绘制彩色标记
+                // If it is a marker cell, draw the colored marker
                 if (isMarker && !isHeader) {
                     drawMarker(g2, text)
                 }
@@ -126,13 +126,13 @@ class MessageTable(
             isOpaque = false
             border = cellPadding
             add(contentComponent, BorderLayout.CENTER)
-            // 存储行列位置供 paintComponent 网格线使用
+            // Store the row/column position for paintComponent grid lines
             putClientProperty("row", row)
             putClientProperty("col", col)
         }
     }
 
-    /** 在单元格内居中绘制彩色 ✓ / ✕ */
+    /** Draws the colored ✓ / ✕ centered inside the cell. */
     private fun drawMarker(g2: Graphics2D, text: String) {
         val marker = text.trim()
         val isGreen = marker in setOf("✓", "✔", "✅")
@@ -149,7 +149,7 @@ class MessageTable(
         g2.drawString(display, x, y)
     }
 
-    /** 格式化表头/简单单元格文字：HTML 包裹彩色标记 */
+    /** Formats header/simple cell text: wraps colored markers in HTML. */
     private fun formatCellText(text: String): String {
         var r = text
             .replace("✕", "<font color='#E53935'>✕</font>")
@@ -173,12 +173,12 @@ class MessageTable(
 
     override fun paintChildren(g: Graphics) {
         super.paintChildren(g)
-        // 在子组件绘制之后，绘制网格线（覆盖在子组件之上）
+        // Draw grid lines after child components are painted (overlaid on top of the children)
         val g2 = g.create() as Graphics2D
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
         g2.color = gridColor
 
-        // 收集所有子组件的位置
+        // Collect the positions of all child components
         val cells = mutableMapOf<Pair<Int, Int>, Component>() // (row, col) -> component
         var maxRow = 0
         var maxCol = 0
@@ -195,9 +195,9 @@ class MessageTable(
             return
         }
 
-        // 按行收集，绘制水平线
+        // Collect by row and draw horizontal lines
         for (row in 0..maxRow) {
-            // 找到这一行最左边的 cell 和最右边的 cell
+            // Find the leftmost and rightmost cells in this row
             var leftX = Int.MAX_VALUE
             var rightX = 0
             var hasCells = false
@@ -208,17 +208,17 @@ class MessageTable(
                 rightX = maxOf(rightX, comp.x + comp.width)
             }
             if (!hasCells) continue
-            // 在行顶部画水平线（第一行顶部不画，因为表格本身可能有圆角边框）
+            // Draw a horizontal line at the top of the row (skip the first row's top because the table itself may have rounded corners)
             if (row > 0) {
                 g2.drawLine(leftX, cells[Pair(row, 0)]!!.y, rightX, cells[Pair(row, 0)]!!.y)
             }
-            // 在行底部画水平线
-            // 使用该行任一组件
+            // Draw a horizontal line at the bottom of the row
+            // Use any component in this row
             val anyComp = cells.entries.first { it.key.first == row }.value
             g2.drawLine(leftX, anyComp.y + anyComp.height, rightX, anyComp.y + anyComp.height)
         }
 
-        // 按列收集，绘制垂直线
+        // Collect by column and draw vertical lines
         for (col in 0..maxCol) {
             var topY = Int.MAX_VALUE
             var bottomY = 0
@@ -230,11 +230,11 @@ class MessageTable(
                 bottomY = maxOf(bottomY, comp.y + comp.height)
             }
             if (!hasCells) continue
-            // 列左侧（第一列左侧不画）
+            // Column left edge (skip the first column's left edge)
             if (col > 0) {
                 g2.drawLine(cells[Pair(0, col)]!!.x, topY, cells[Pair(0, col)]!!.x, bottomY)
             }
-            // 列右侧
+            // Column right edge
             val anyComp = cells.entries.first { it.key.second == col }.value
             g2.drawLine(anyComp.x + anyComp.width, topY, anyComp.x + anyComp.width, bottomY)
         }

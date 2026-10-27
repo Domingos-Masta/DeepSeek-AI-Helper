@@ -73,23 +73,23 @@ abstract class BaseAgentAction : AnAction() {
             return
         }
 
-        // 在选中代码下方显示加载提示
+        // Show the loading hint below the selected code
         if (editor != null) {
             AgentResultPopup.showLoadingHint(editor)
         }
 
-        // 流式调用 — 不再拼接 DOMAIN_RESTRICTION_PROMPT
+        // Streaming call — no longer concatenating DOMAIN_RESTRICTION_PROMPT
         val userMessage = if (selectedText.isBlank()) {
             emptySelectionMessage
         } else {
             "```\n$selectedText\n```"
         }
 
-        // 注入语言指令（使用 AI 输出语言设置，与 Chat 面板统一）
+        // Inject language instruction (using the AI output language setting, consistent with the Chat panel)
         val langInstruction = if (settings.language == "en")
             "\n\nPlease reply in English."
         else
-            "\n\n请用中文回复。"
+            "\n\nPlease reply in English."
 
         val messages = listOf(
             ChatMessage("system", systemPrompt + langInstruction),
@@ -122,8 +122,8 @@ abstract class BaseAgentAction : AnAction() {
     }
 
     /**
-     * 在编辑器选中代码下方以绿色背景弹窗显示 AI 响应结果。
-     * 子类可覆写此方法以自定义展示行为。
+     * Shows the AI response result in a green-background popup below the code selected in the editor.
+     * Subclasses can override this method to customize the display behavior.
      */
     protected open fun showResult(project: Project, originalCode: String, response: String) {
         val editor = capturedEditor

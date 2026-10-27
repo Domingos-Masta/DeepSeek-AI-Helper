@@ -1,9 +1,9 @@
 <idea-plugin>
     <id>com.deepseek.plugin</id>
-    <name>DeepSeek AI Assistant</name>
+    <name>DeepSeek-AI-Helper</name>
     <vendor url="https://github.com/lvesDi005/DeepSeek-AI-CodeHelper">lvesDi005</vendor>
     <description><![CDATA[
-        <h2>DeepSeek AI Assistant for JETBRAINS</h2>
+        <h2>DeepSeek-AI-Helper for JETBRAINS</h2>
         <ul>
           <li><b>Code Completion</b> — AI-powered inline suggestions as you type</li>
           <li><b>Chat Panel</b> — Ask anything in a side-panel chat window</li>
@@ -41,7 +41,7 @@
 
         <!-- Chat Tool Window -->
         <toolWindow
-            id="DeepSeek AI CodeHelper"
+            id="DeepSeek-AI-Helper"
             anchor="right"
             icon="com.deepseek.plugin.icons.PluginIcons.TOOLWINDOW"
             factoryClass="com.deepseek.plugin.chat.ChatToolWindowFactory"/>
@@ -52,7 +52,7 @@
             implementationClass="com.deepseek.plugin.completion.DeepSeekCompletionContributor"
             order="last"/>
 
-        <!-- Paste Image Handler — 拦截编辑器粘贴，检测图片保存到聊天附件 -->
+        <!-- Paste Image Handler — intercepts editor paste and detects images to save to chat attachments -->
         <editorActionHandler
             action="EditorPaste"
             order="first"
@@ -60,7 +60,7 @@
 
         <!-- Notification group -->
         <notificationGroup
-            id="DeepSeek AI CodeHelper"
+            id="DeepSeek-AI-Helper"
             displayType="BALLOON"/>
 
         <!-- ===== MCP Server ===== -->

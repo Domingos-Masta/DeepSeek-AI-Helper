@@ -173,7 +173,7 @@ class McpClientConnection(
         addProperty("protocolVersion", "2024-11-05")
         add("capabilities", JsonObject())
         add("clientInfo", JsonObject().apply {
-            addProperty("name", "DeepSeek-CodeHelper")
+            addProperty("name", "DeepSeek-AI-Helper")
             addProperty("version", "2.7.3")
         })
     }

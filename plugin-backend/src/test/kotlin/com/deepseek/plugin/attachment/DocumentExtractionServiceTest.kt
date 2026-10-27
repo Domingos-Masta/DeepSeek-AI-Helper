@@ -29,15 +29,15 @@ class DocumentExtractionServiceTest {
 
     @Test
     fun `extracts utf8 and gb18030 text`() {
-        val utf8 = tempFile("utf8", ".txt").apply { writeText("hello 文档", Charsets.UTF_8) }
-        val gb = tempFile("gb", ".txt").apply { writeBytes("中文内容".toByteArray(charset("GB18030"))) }
+        val utf8 = tempFile("utf8", ".txt").apply { writeText("hello document", Charsets.UTF_8) }
+        val gb = tempFile("gb", ".txt").apply { writeBytes("Chinese content".toByteArray(charset("GB18030"))) }
         val utf16 = tempFile("utf16", ".txt").apply {
-            writeBytes(byteArrayOf(0xFF.toByte(), 0xFE.toByte()) + "宽字符".toByteArray(Charsets.UTF_16LE))
+            writeBytes(byteArrayOf(0xFF.toByte(), 0xFE.toByte()) + "wide characters".toByteArray(Charsets.UTF_16LE))
         }
 
-        assertEquals("hello 文档", service.extract(descriptor(utf8)).content)
-        assertEquals("中文内容", service.extract(descriptor(gb)).content)
-        assertEquals("宽字符", service.extract(descriptor(utf16)).content)
+        assertEquals("hello document", service.extract(descriptor(utf8)).content)
+        assertEquals("Chinese content", service.extract(descriptor(gb)).content)
+        assertEquals("wide characters", service.extract(descriptor(utf16)).content)
     }
 
     @Test

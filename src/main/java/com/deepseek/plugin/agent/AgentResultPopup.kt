@@ -23,17 +23,17 @@ import javax.swing.JPanel
 import javax.swing.SwingConstants
 
 /**
- * 在编辑器选中代码下方以绿色背景弹窗显示 AI 响应内容。
+ * Displays the AI response content in a green-background popup below the code selected in the editor.
  *
- * 布局：
+ * Layout:
  * ┌─────────────────────────┐
  * │ The `ComponentActivity` │
- * │ class is part of...     │  ← 文本正文（可上下左右滚动）
+ * │ class is part of...     │  ← text body (scrollable in all directions)
  * └─────────────────────────┘
  */
 object AgentResultPopup {
 
-    // ── 配色 ──
+    // ── Color scheme ──
     private val GREEN_BG = JBColor(Color(0xE8F5E9), Color(0x1B5E20))
     private val GREEN_BORDER = JBColor(Color(0x4CAF50), Color(0x388E3C))
     private val TEXT_COLOR = JBColor(Color(0x212121), Color(0xE0E0E0))
@@ -41,9 +41,9 @@ object AgentResultPopup {
 
     private var activeHint: Balloon? = null
 
-    /** 流式模式：当前正在追加内容的文本区域 */
+    /** Streaming mode: text area currently receiving appended content */
     private var streamingTextArea: JBTextArea? = null
-    /** 流式模式：当前编辑器（用于定位弹窗） */
+    /** Streaming mode: current editor (used to position the popup) */
     private var streamingEditor: Editor? = null
 
     fun dismiss() {
@@ -54,7 +54,7 @@ object AgentResultPopup {
     }
 
     /**
-     * 在选中代码起始行下方显示加载提示。
+     * Shows a loading hint below the starting line of the selected code.
      */
     fun showLoadingHint(editor: Editor) {
         dismiss()
@@ -86,12 +86,12 @@ object AgentResultPopup {
     }
 
     /**
-     * 在选中代码起始行下方显示结果弹窗。
+     * Shows the result popup below the starting line of the selected code.
      *
-     * @param editor       当前编辑器
-     * @param project      当前项目
-     * @param originalCode 用户选中的原始代码（用作标题头）
-     * @param response     AI 响应内容（MD 格式）
+     * @param editor       current editor
+     * @param project      current project
+     * @param originalCode original code selected by the user (used as the title header)
+     * @param response     AI response content (Markdown format)
      */
     fun showResult(editor: Editor, project: Project, originalCode: String, response: String) {
         dismiss()
@@ -102,7 +102,7 @@ object AgentResultPopup {
             isOpaque = true
         }
 
-        // ── 正文：解析响应并分段渲染 ──
+        // ── Body: parse the response and render it in segments ──
         val segments = CodeBlockCard.parseResponse(response)
         val bodyPanel = JPanel().apply {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
@@ -131,7 +131,7 @@ object AgentResultPopup {
 
         rootPanel.add(bodyPanel)
 
-        // 限制最大宽度，高度由内容自动撑开，超出时纵向滚动
+        // Limit the maximum width; height grows with content and scrolls vertically when exceeded
         rootPanel.maximumSize = Dimension(660, Int.MAX_VALUE)
 
         val scrollPane = JBScrollPane(rootPanel).apply {
@@ -152,16 +152,16 @@ object AgentResultPopup {
             .also { it.show(belowSelectionStart(editor), Balloon.Position.below) }
     }
 
-    // ── 流式输出 ──
+    // ── Streaming output ──
 
     /**
-     * 追加流式 token 到当前弹窗。首次调用时自动关闭加载提示并创建弹窗。
+     * Appends a streaming token to the current popup. On the first call it automatically closes the loading hint and creates the streaming popup.
      */
     fun appendStreamingContent(token: String) {
         if (token.isEmpty()) return
 
         if (streamingTextArea == null) {
-            // 首次 token：关闭加载提示，创建流式弹窗
+            // First token: close the loading hint and create the streaming popup
             val editor = streamingEditor ?: return
             dismiss()
 
@@ -205,16 +205,16 @@ object AgentResultPopup {
         streamingTextArea?.append(token)
     }
 
-    /** 流式输出完成，清理引用 */
+    /** Streaming output finished; clear the references */
     fun finishStreaming() {
         streamingTextArea = null
         streamingEditor = null
     }
 
-    // ── 内部方法 ──
+    // ── Internal methods ──
 
     /**
-     * 使用 IDEA 原生 JBTextArea 渲染文本段，绿色主题。
+     * Renders a text segment using IDEA's native JBTextArea with the green theme.
      */
     private fun createTextSegment(text: String): JBTextArea {
         return JBTextArea(text.trim()).apply {
@@ -230,7 +230,7 @@ object AgentResultPopup {
         }
     }
 
-    /** 将表格段转为纯文本（Markdown 表格格式） */
+    /** Converts a table segment to plain text (Markdown table format) */
     private fun tableToText(table: ResponseSegment.Table): String = buildString {
         appendLine(table.headers.joinToString(" | "))
         appendLine(table.headers.joinToString(" | ") { "---" })
@@ -239,7 +239,7 @@ object AgentResultPopup {
         }
     }
 
-    /** 定位到选中代码正中间的下方，不遮挡选中代码 */
+    /** Positions the popup below the center of the selected code without covering it */
     private fun belowSelectionStart(editor: Editor): RelativePoint {
         if (!editor.selectionModel.hasSelection()) {
             val pos = editor.offsetToVisualPosition(editor.caretModel.offset)
@@ -250,9 +250,9 @@ object AgentResultPopup {
         val endPos = editor.offsetToVisualPosition(editor.selectionModel.selectionEnd)
         val startPt = editor.visualPositionToXY(startPos)
         val endPt = editor.visualPositionToXY(endPos)
-        // 水平居中：取选中区域首尾的中间 X 坐标
+        // Horizontal centering: take the middle X coordinate of the selection's start and end
         val centerX = (startPt.x + endPt.x) / 2
-        // 垂直：放在选中代码最后一行下方（避免遮挡）
+        // Vertical: place below the last line of the selected code (to avoid covering it)
         val belowY = endPt.y + editor.lineHeight
         return RelativePoint(editor.contentComponent, Point(centerX, belowY))
     }

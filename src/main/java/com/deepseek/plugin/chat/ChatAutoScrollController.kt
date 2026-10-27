@@ -9,7 +9,7 @@ internal class ChatAutoScrollController(private val bottomThreshold: Int = 8) {
         followsBottom = true
     }
 
-    /** 用户明确离开底部（如向上滚动）— 同步调用，立即暂停跟随。 */
+    /** User explicitly left the bottom (e.g. scrolled up) — synchronous call, pauses following immediately. */
     fun onUserScrollAway() {
         followsBottom = false
     }

@@ -39,29 +39,29 @@ import javax.swing.SwingUtilities
 import javax.swing.border.AbstractBorder
 
 /**
- * 翻译对话框 — 主题自适应双栏翻译界面。
+ * Translation dialog — theme-adaptive two-column translation UI.
  *
  * ┌───────────────────────────────────────────────┐
  * │  ┌──────────────┐    ┌──────────────┐         │
- * │  │ 中文 ▾       │ ⇄  │ English ▾    │         │
+ * │  │ Chinese ▾    │ ⇄  │ English ▾    │         │
  * │  │              │    │              │         │
- * │  │ 输入文本...   │    │ 翻译...      │         │
+ * │  │ Enter text... │    │ Translating... │       │
  * │  │              │    │              │         │
  * │  └──────────────┘    └──────────────┘         │
- * │              [ 翻  译 ]                       │
+ * │              [ Translate ]                    │
  * ├───────────────────────────────────────────────┤
  * │                              [OK] [Cancel]    │
  * └───────────────────────────────────────────────┘
  */
 class TranslateDialog(project: Project?) : DialogWrapper(project, false) {
 
-    // ── 语言列表 ──
+    // ── Language list ──
     private val languages = listOf(
         I18n.tr("lang.zh"), I18n.tr("lang.en"), I18n.tr("lang.ja"), I18n.tr("lang.ko"), I18n.tr("lang.fr"),
         I18n.tr("lang.de"), I18n.tr("lang.es"), I18n.tr("lang.ru"), I18n.tr("lang.pt"), I18n.tr("lang.it")
     )
 
-    // ── UI 组件 ──
+    // ── UI components ──
     private val leftLangCombo = JComboBox(languages.toTypedArray()).apply {
         selectedIndex = 0
     }
@@ -80,7 +80,7 @@ class TranslateDialog(project: Project?) : DialogWrapper(project, false) {
     }
 
     // ================================================================
-    // 主面板
+    // Main panel
     // ================================================================
 
     override fun createCenterPanel(): JComponent {
@@ -90,7 +90,7 @@ class TranslateDialog(project: Project?) : DialogWrapper(project, false) {
             preferredSize = Dimension(660, 380)
         }
 
-        // ── 双栏主体 ──
+        // ── Two-column body ──
         val body = JPanel(GridBagLayout()).apply {
             background = JBColor(0xE8E8E8, 0x2B2B2B)
         }
@@ -100,13 +100,13 @@ class TranslateDialog(project: Project?) : DialogWrapper(project, false) {
         c.fill = GridBagConstraints.BOTH
         c.weighty = 1.0
 
-        // 左栏
+        // Left column
         c.gridx = 0
         c.weightx = 1.0
         c.insets = JBUI.insets(0)
         body.add(createInputCard(leftLangCombo, leftTextArea), c)
 
-        // ⇄ 互换箭头
+        // ⇄ Swap arrow
         c.gridx = 1
         c.fill = GridBagConstraints.NONE
         c.weightx = 0.0
@@ -115,7 +115,7 @@ class TranslateDialog(project: Project?) : DialogWrapper(project, false) {
         c.anchor = GridBagConstraints.CENTER
         body.add(createSwapButton(), c)
 
-        // 右栏
+        // Right column
         c.gridx = 2
         c.fill = GridBagConstraints.BOTH
         c.weightx = 1.0
@@ -126,7 +126,7 @@ class TranslateDialog(project: Project?) : DialogWrapper(project, false) {
 
         root.add(body, BorderLayout.CENTER)
 
-        // ── 底部「翻译」按钮 ──
+        // ── Bottom "Translate" button ──
         val bottomWrap = JPanel(BorderLayout()).apply {
             background = JBColor(0xE8E8E8, 0x2B2B2B)
             border = JBUI.Borders.empty(10, 0, 0, 0)
@@ -154,7 +154,7 @@ class TranslateDialog(project: Project?) : DialogWrapper(project, false) {
     }
 
     // ================================================================
-    // 输入卡片 — 圆角面板
+    // Input card — rounded-corner panel
     // ================================================================
 
     private fun createInputCard(langCombo: JComboBox<String>, textArea: ThemeAwareTextArea): JPanel {
@@ -171,11 +171,11 @@ class TranslateDialog(project: Project?) : DialogWrapper(project, false) {
             border = JBUI.Borders.empty(0)
         }
 
-        // 语言下拉
+        // Language dropdown
         styleDropdown(langCombo)
         card.add(langCombo, BorderLayout.NORTH)
 
-        // 文本区域
+        // Text area
         val scrollPane = JBScrollPane(textArea).apply {
             border = JBUI.Borders.empty(2, 0, 6, 0)
             viewportBorder = JBUI.Borders.empty()
@@ -190,7 +190,7 @@ class TranslateDialog(project: Project?) : DialogWrapper(project, false) {
     }
 
     // ================================================================
-    // 下拉框主题自适应样式
+    // Theme-adaptive dropdown styling
     // ================================================================
 
     private fun styleDropdown(combo: JComboBox<String>) {
@@ -244,7 +244,7 @@ class TranslateDialog(project: Project?) : DialogWrapper(project, false) {
     }
 
     // ================================================================
-    // 主题自适应文本区域（带占位文字）
+    // Theme-adaptive text area (with placeholder text)
     // ================================================================
 
     private class ThemeAwareTextArea(private val placeholder: String) : JTextArea() {
@@ -263,7 +263,7 @@ class TranslateDialog(project: Project?) : DialogWrapper(project, false) {
         }
 
         override fun paintComponent(g: Graphics) {
-            // 绘制圆角背景
+            // Draw the rounded background
             val g2 = g.create() as Graphics2D
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
             g2.color = background
@@ -272,7 +272,7 @@ class TranslateDialog(project: Project?) : DialogWrapper(project, false) {
 
             super.paintComponent(g)
 
-            // 占位文字
+            // Placeholder text
             if (text.isEmpty() && !isFocusOwner) {
                 val g3 = g.create() as Graphics2D
                 g3.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
@@ -288,7 +288,7 @@ class TranslateDialog(project: Project?) : DialogWrapper(project, false) {
     }
 
     // ================================================================
-    // ⇄ 互换箭头按钮（圆形）
+    // ⇄ Swap arrow button (circular)
     // ================================================================
 
     private fun createSwapButton(): JComponent {
@@ -348,7 +348,7 @@ class TranslateDialog(project: Project?) : DialogWrapper(project, false) {
     }
 
     // ================================================================
-    // 翻译 — 调用 Agnes API
+    // Translation — calls the Agnes API
     // ================================================================
 
     private fun performTranslation() {
@@ -358,7 +358,7 @@ class TranslateDialog(project: Project?) : DialogWrapper(project, false) {
             return
         }
 
-        val sourceLang = leftLangCombo.selectedItem?.toString() ?: "中文"
+        val sourceLang = leftLangCombo.selectedItem?.toString() ?: "Chinese"
         val targetLang = rightLangCombo.selectedItem?.toString() ?: "English"
 
         rightTextArea.text = I18n.tr("translate.progress")
@@ -379,7 +379,7 @@ class TranslateDialog(project: Project?) : DialogWrapper(project, false) {
         }
     }
 
-    /** 使用 Agnes API 执行翻译 */
+    /** Executes translation via the Agnes API. */
     private fun translateWithAgnes(
         text: String,
         sourceLang: String,
@@ -392,7 +392,7 @@ class TranslateDialog(project: Project?) : DialogWrapper(project, false) {
 
         val messages = listOf(
             mapOf("role" to "system", "content" to DOMAIN_RESTRICTION_PROMPT),
-            mapOf("role" to "user", "content" to "请将以下${sourceLang}文本翻译为${targetLang}，只返回翻译结果，不要添加任何解释：\n\n$text")
+            mapOf("role" to "user", "content" to "Please translate the following ${sourceLang} text into ${targetLang}. Return only the translation result, without any explanations:\n\n$text")
         )
         val bodyMap = mapOf(
             "model" to settings.agnesModel.ifBlank { "agnes-2.5-flash" },
@@ -426,7 +426,7 @@ class TranslateDialog(project: Project?) : DialogWrapper(project, false) {
                 ?.let { it["content"] as? String }
                 ?.trim()
             if (content.isNullOrBlank()) {
-                Result.failure(Exception("翻译返回了空内容"))
+                Result.failure(Exception("Translation returned empty content."))
             } else {
                 Result.success(content)
             }
@@ -436,7 +436,7 @@ class TranslateDialog(project: Project?) : DialogWrapper(project, false) {
     }
 
     // ================================================================
-    // 仅保留自定义「翻译」按钮，移除原生 OK/Cancel
+    // Keep only the custom "Translate" button; remove the native OK/Cancel
     // ================================================================
 
     override fun createActions(): Array<javax.swing.Action> = emptyArray()

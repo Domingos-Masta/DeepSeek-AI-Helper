@@ -5,34 +5,34 @@ import okhttp3.sse.EventSource
 import javax.swing.Timer
 
 /**
- * 聊天状态的有限状态机。
+ * Finite state machine for chat state.
  *
- * 将 ChatPanel 中分散的 mutable 字段（isStreaming、currentEventSource、
- * streamBuffer、streamingBubble、firstTokenArrived、thinkingTimer）
- * 集中为不可变的 sealed class，通过 [AtomicReference] 管理，线程安全。
+ * Consolidates the scattered mutable fields in ChatPanel (isStreaming, currentEventSource,
+ * streamBuffer, streamingBubble, firstTokenArrived, thinkingTimer)
+ * into an immutable sealed class managed via [AtomicReference], making it thread-safe.
  *
- * 状态转换：
- *   Idle → Streaming (用户发送消息)
- *   Streaming → Idle (完成/错误/取消)
+ * State transitions:
+ *   Idle → Streaming (user sends a message)
+ *   Streaming → Idle (completion / error / cancellation)
  */
 sealed class ChatState {
 
-    /** 空闲状态 — 没有进行中的请求 */
+    /** Idle state — no request in progress */
     object Idle : ChatState()
 
-    /** 流式响应进行中 */
+    /** Streaming response in progress */
     data class Streaming(
         val eventSource: EventSource,
-        /** CLI Agent 模式（Claude/Codex）持有的进程句柄，用于停止时销毁；HTTP 流为 null */
+        /** Process handle held by CLI Agent mode (Claude/Codex), used to destroy it on stop; null for HTTP streams */
         val process: Process? = null,
         val buffer: StringBuilder = StringBuilder(),
         val reasoningBuffer: StringBuilder = StringBuilder(),
         val bubble: MessageBubble,
-        /** 刷新 timer — 停止时必须 stop() 避免操作已移除的组件 */
+        /** Flush timer — must be stop()ed on stop to avoid touching removed components */
         val flushTimer: Timer? = null,
-        /** 思考动画 timer */
+        /** Thinking animation timer */
         val thinkingTimer: Timer? = null,
-        /** 请求发起的毫秒时间戳 */
+        /** Millisecond timestamp when the request was initiated */
         val startTime: Long = System.currentTimeMillis()
     ) : ChatState()
 }

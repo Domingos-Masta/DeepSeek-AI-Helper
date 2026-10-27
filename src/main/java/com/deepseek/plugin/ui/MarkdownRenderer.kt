@@ -27,9 +27,10 @@ import javax.swing.text.html.StyleSheet
 object MarkdownRenderer {
 
     /**
-     * Regex 匹配候选的英文/代码术语。
-     * 规则：由 [a-zA-Z_] 开头，包含字母/数字/点/下划线/尖括号/方括号/# 的 2-60 字符序列，
-     * 之后由 [isTechnicalTerm] 过滤，只保留真正的代码术语格式。
+     * Regex that matches candidate English/code terms.
+     * Rule: a 2-60 character sequence starting with [a-zA-Z_] and containing
+     * letters/digits/dots/underscores/angle brackets/square brackets/#, then filtered
+     * by [isTechnicalTerm] to keep only genuine code-term formats.
      */
     private val REGEX_INLINE_CODE = Regex(
         "(?<=[\\u4e00-\\u9fff\\u3000-\\u303f\\uff00-\\uffef\\s，。、；：！？）()" +
@@ -55,7 +56,7 @@ object MarkdownRenderer {
         bgColor: java.awt.Color? = null,
         linkCallback: ((String) -> Unit)? = null
     ): JEditorPane {
-        // 预处理：将代码术语自动包裹 backtick，使其在正文中更突出
+        // Preprocess: automatically wrap code terms in backticks to make them stand out in body text
         val highlighted = highlightInlineCode(markdownText)
         val html = toHtml(highlighted)
         val pane = object : JEditorPane("text/html", html) {
@@ -76,8 +77,10 @@ object MarkdownRenderer {
         }.apply {
             isEditable = false
             isOpaque = bgColor != null
-            // 显式设置前景色：确保 refreshFont 等读取 pane.foreground 时用插件主题色，
-            // 避免 fallback 到 JBColor.foreground()（跟随 IDE，插件深色+IDE浅色时正文变深）
+            // Set the foreground explicitly: ensures refreshFont and similar code reading
+            // pane.foreground use the plugin theme color, instead of falling back to
+            // JBColor.foreground() (which follows the IDE, darkening body text when the
+            // plugin is dark but the IDE is light)
             foreground = fgColor
             background = bgColor ?: java.awt.Color(0, 0, 0, 0) // transparent
             putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, true)
@@ -101,11 +104,12 @@ object MarkdownRenderer {
     }
 
     /**
-     * 更新已渲染 [JEditorPane] 的字体大小。
+     * Updates the font size of an already-rendered [JEditorPane].
      *
-     * 仅设置 pane.font 是不够的 — HTML 内容由 [StyleSheet] 的 CSS 规则驱动
-     * （`body { font-size: XXpt }`），CSS 优先级高于 JEditorPane 的 font 属性。
-     * 因此需用新字号重建 StyleSheet，已生成内容才能即时变化。
+     * Setting pane.font alone is not enough — the HTML content is driven by the
+     * [StyleSheet] CSS rules (`body { font-size: XXpt }`), which take priority over
+     * JEditorPane's font property. Therefore the StyleSheet must be rebuilt with the
+     * new font size for the already-generated content to change immediately.
      */
     fun refreshFont(pane: JEditorPane, fontSize: Int) {
         pane.font = pane.font.deriveFont(fontSize.toFloat())
@@ -130,18 +134,19 @@ object MarkdownRenderer {
     }
 
     /**
-     * 将文本中的代码术语用 backtick 包裹，
-     * 使它们在 Markdown 渲染时获得内联代码样式（等宽字体 + 底色），从而突出显示。
+     * Wraps code terms in text with backticks so they get inline-code styling
+     * (monospace font + background) when rendered as Markdown, making them stand out.
      *
-     * 通过 [isTechnicalTerm] 按词形判断，只识别真正的代码术语（如 camelCase、
-     * PascalCase、ALL_CAPS、含特殊字符的标识符），不处理普通英文单词。
+     * Uses [isTechnicalTerm] to judge by word shape, recognizing only genuine code
+     * terms (e.g. camelCase, PascalCase, ALL_CAPS, identifiers with special characters)
+     * and leaving ordinary English words untouched.
      *
-     * 例如：
-     *  - 「使用 MessageBubble 显示」→「使用 `MessageBubble` 显示」
-     *  - 「call getUser() to fetch」→「call `getUser()` to fetch」
-     *  - 「the API returns JSON」→「the `API` returns `JSON`」
+     * Examples:
+     *  - "Render it with MessageBubble" → "Render it with `MessageBubble`"
+     *  - "call getUser() to fetch" → "call `getUser()` to fetch"
+     *  - "the API returns JSON" → "the `API` returns `JSON`"
      *
-     * 不会重复包裹已被 `` ` `` 包裹的内容。
+     * Content already wrapped in `` ` `` is not wrapped again.
      */
     fun highlightInlineCode(text: String): String {
         val sb = StringBuilder()
@@ -150,10 +155,10 @@ object MarkdownRenderer {
         for (match in REGEX_INLINE_CODE.findAll(text)) {
             val start = match.range.first
 
-            // 按词形过滤：只保留真正的代码术语（非普通英文单词）
+            // Filter by word shape: keep only genuine code terms (not ordinary English words)
             if (!isTechnicalTerm(match.value)) continue
 
-            // 跳过已被 backtick 包裹的（前面有 ` 且后面有对应的 `）
+            // Skip content already wrapped in backticks (preceded by ` with a matching closing `)
             val alreadyWrapped = start > 0 && text[start - 1] == '`'
 
             if (!alreadyWrapped) {
@@ -172,26 +177,26 @@ object MarkdownRenderer {
     // ── Private helpers ──
 
     /**
-     * 判断一个词是否为代码术语（而非普通英文单词）。
+     * Determines whether a word is a code term (rather than an ordinary English word).
      *
-     * 代码术语通常具有以下特征之一：
-     *  - 包含非字母字符（点、下划线、尖括号、括号、数字等）：`List<String>`、`user_name`、`@Override`
-     *  - 全大写且长度 ≥ 2：`API`、`JSON`、`MAX`（常量/缩写）
-     *  - 非首字母有大写字母（camelCase / PascalCase）：`getUser`、`MessageBubble`、`JavaScript`
+     * Code terms usually have one of these characteristics:
+     *  - Contains non-letter characters (dot, underscore, angle brackets, parentheses, digits, etc.): `List<String>`, `user_name`, `@Override`
+     *  - All uppercase and length ≥ 2: `API`, `JSON`, `MAX` (constants/abbreviations)
+     *  - An uppercase letter beyond the first character (camelCase / PascalCase): `getUser`, `MessageBubble`, `JavaScript`
      */
     private fun isTechnicalTerm(word: String): Boolean {
         if (word.length < 2) return false
 
-        // 包含非字母字符 → 代码标识符（下划线、点、括号、数字等）
+        // Contains non-letter characters → code identifier (underscore, dot, brackets, digits, etc.)
         if (word.any { !it.isLetter() }) return true
 
         val hasLower = word.any { it.isLowerCase() }
         val hasUpper = word.any { it.isUpperCase() }
 
-        // 全大写 → 常量/缩写（API, JSON, MAX）
+        // All uppercase → constant/abbreviation (API, JSON, MAX)
         if (hasUpper && !hasLower) return true
 
-        // 非首字母位置出现大写 → camelCase / PascalCase（getUser, MessageBubble, JavaScript）
+        // An uppercase beyond the first character → camelCase / PascalCase (getUser, MessageBubble, JavaScript)
         if (hasLower && word.substring(1).any { it.isUpperCase() }) return true
 
         return false
@@ -208,18 +213,18 @@ object MarkdownRenderer {
 
         ss.addRule("body { font-family: sans-serif; font-size: ${fontSize}pt; color: $hexFg; margin: 0; padding: 0; text-align: left; }")
         ss.addRule("p { margin: 0 0 6px 0; padding: 0; text-align: left; }")
-        // 次级标题：跟随主题高对比（#111111/#F2F2F2 加粗），禁止浅灰淡字
+        // Secondary headings: follow the theme's high contrast (#111111/#F2F2F2 bold); no faint light-gray text
         ss.addRule("h1, h2, h3, h4, h5, h6 { margin: 10px 0 4px 0; margin-left: 0; padding-left: 0; font-weight: bold; color: $hexHeading; text-align: left; }")
         ss.addRule("ul, ol { margin: 2px 0 6px 0; padding-left: 22px; color: $hexFg; }")
-        // 列表项显式继承正文高对比色：Swing HTML 渲染中 li 不总是继承 body 颜色，需显式指定，防止浅灰小字
+        // List items explicitly inherit the high-contrast body color: in Swing HTML rendering `li` does not always inherit the body color, so it must be set explicitly to avoid faint small gray text
         ss.addRule("li { margin: 2px 0; color: $hexFg; }")
-        // 防御：即使内容含 small/sub/sup，也强制正文级字号与对比度，禁止缩小淡化
+        // Defensive: even if content contains small/sub/sup, force body-level font size and contrast; no shrinking or fading
         ss.addRule("small, sub, sup { font-size: inherit; color: $hexFg; }")
         ss.addRule("a { color: $linkColor; text-decoration: underline; }")
-        // 内联代码：等宽 + 底色 + 颜色有别于正文，使其从中文中脱颖而出
+        // Inline code: monospace + background + a color distinct from body text so it stands out from Chinese
         ss.addRule("code { font-family: monospace; font-size: ${fontSize - 1}pt; background-color: $codeBg; color: $codeFg; padding: 1px 4px; }")
         ss.addRule("pre { background-color: transparent; padding: 0; margin: 0; }")
-        // 引用块：正文标准对比度（不淡化），用左边框区分模块
+        // Blockquote: standard body contrast (not faded), distinguished by a left border
         ss.addRule("blockquote { margin: 4px 0; padding: 2px 10px; border-left: 3px solid $hexBorder; color: $hexFg; }")
         ss.addRule("hr { border: none; border-top: 1px solid $hexBorder; margin: 10px 0; }")
         ss.addRule("strong { font-weight: bold; }")

@@ -5,114 +5,114 @@ import com.intellij.psi.*
 import com.intellij.psi.util.PsiTreeUtil
 
 /**
- * 注释感知补全引擎。
+ * Comment-aware completion engine.
  *
- * 分析用户写在光标前的注释内容，理解代码意图，自动推荐匹配的代码模板。
+ * Analyzes the comment content the user wrote before the caret, understands the code intent, and automatically recommends matching code templates.
  *
- * 【工作流程】
- * 1. 检测光标前是否有注释行（// 或 /星 或 /星星）
- * 2. 提取注释文本中的关键词和意图
- * 3. 匹配预定义的代码模式模板
- * 4. 返回匹配的代码补全候选
+ * [Workflow]
+ * 1. Detect whether there is a comment line before the caret (line, block, or documentation comment)
+ * 2. Extract keywords and intent from the comment text
+ * 3. Match against predefined code pattern templates
+ * 4. Return the matching code completion candidates
  *
- * 【支持场景】
- * - 注释后跟空行，光标在空行上 → 生成注释描述的代码
- * - 注释行末尾直接补全 → 在注释后追加代码
- * - 类/方法/字段前的文档注释 → 根据上下文理解意图
+ * [Supported scenarios]
+ * - A comment followed by a blank line with the caret on the blank line → generate code described by the comment
+ * - Completing directly at the end of a comment line → append code after the comment
+ * - Documentation comments before a class/method/field → understand intent from the context
  */
 class CommentAwareCompletion {
 
     companion object {
         private val LOG = Logger.getInstance(CommentAwareCompletion::class.java)
 
-        // ==================== 模式常量 ====================
+        // ==================== Pattern constants ====================
 
         // ---- Getter / Setter ----
         private val PATTERN_GETTER     = Regex(
-            "(?:getter|get|取得|获取|得到).*?(?:for|变量|字段|属性)?\\s*(\\S+)" +
-            "|(\\S+).*?(?:的)?(?:getter|get|取得|获取|得到)" +
-            "|获取.*?(\\S+).*?(?:字段|属性|变量)",
+            "(?:getter|get|obtain|acquire|fetch).*?(?:for|variable|field|property)?\\s*(\\S+)" +
+            "|(\\S+).*?(?:of)?(?:getter|get|obtain|acquire|fetch)" +
+            "|obtain.*?(\\S+).*?(?:field|property|variable)",
             RegexOption.IGNORE_CASE
         )
         private val PATTERN_SETTER     = Regex(
-            "(?:setter|set|设置|写入|设定).*?(?:for|变量|字段|属性)?\\s*(\\S+)" +
-            "|(\\S+).*?(?:的)?(?:setter|set|设置|写入)" +
-            "|设置.*?(\\S+).*?(?:字段|属性|变量)",
+            "(?:setter|set|assign|write|configure).*?(?:for|variable|field|property)?\\s*(\\S+)" +
+            "|(\\S+).*?(?:of)?(?:setter|set|assign|write)" +
+            "|assign.*?(\\S+).*?(?:field|property|variable)",
             RegexOption.IGNORE_CASE
         )
         private val PATTERN_GETSET     = Regex(
-            "(?:getter\\s*(?:and|&)?\\s*setter|get/set|读写|getter和setter)" +
-            "|同时.*?(?:获取|读取|取).*?(?:设置|写入|写)" +
-            "|全字段.*?(?:getter|setter|读写)",
+            "(?:getter\\s*(?:and|&)?\\s*setter|get/set|read-write|getter and setter)" +
+            "|both.*?(?:get|read|retrieve).*?(?:set|write|assign)" +
+            "|all fields.*?(?:getter|setter|read-write)",
             RegexOption.IGNORE_CASE
         )
 
         // ---- Constructor ----
-        private val PATTERN_ALL_ARGS_CTOR = Regex("(all.arg|全参|全部参数|完整构造)", RegexOption.IGNORE_CASE)
-        private val PATTERN_NO_ARGS_CTOR  = Regex("(no.arg|无参|空构造|默认构造)", RegexOption.IGNORE_CASE)
-        private val PATTERN_CTOR          = Regex("(constructor|构造|构造器|构造函数|全参构造器|无参构造器)", RegexOption.IGNORE_CASE)
+        private val PATTERN_ALL_ARGS_CTOR = Regex("(all.arg|all-args|all parameters|full constructor)", RegexOption.IGNORE_CASE)
+        private val PATTERN_NO_ARGS_CTOR  = Regex("(no.arg|no-args|empty constructor|default constructor)", RegexOption.IGNORE_CASE)
+        private val PATTERN_CTOR          = Regex("(constructor|construct|class constructor|constructor function|all-args constructor|no-args constructor)", RegexOption.IGNORE_CASE)
 
         // ---- Design Patterns ----
-        private val PATTERN_SINGLETON   = Regex("(singleton|单例|单例模式)", RegexOption.IGNORE_CASE)
-        private val PATTERN_BUILDER     = Regex("(builder|建造者|构建器|Builder模式)", RegexOption.IGNORE_CASE)
-        private val PATTERN_FACTORY     = Regex("(factory|工厂|工厂模式|工厂方法)", RegexOption.IGNORE_CASE)
-        private val PATTERN_STRATEGY    = Regex("(strategy|策略|策略模式)", RegexOption.IGNORE_CASE)
-        private val PATTERN_OBSERVER    = Regex("(observer|观察者|监听|订阅)", RegexOption.IGNORE_CASE)
-        private val PATTERN_PROXY       = Regex("(proxy|代理|代理模式)", RegexOption.IGNORE_CASE)
-        private val PATTERN_TEMPLATE    = Regex("(template|模板|模板方法)", RegexOption.IGNORE_CASE)
+        private val PATTERN_SINGLETON   = Regex("(singleton|singleton pattern)", RegexOption.IGNORE_CASE)
+        private val PATTERN_BUILDER     = Regex("(builder|builder pattern)", RegexOption.IGNORE_CASE)
+        private val PATTERN_FACTORY     = Regex("(factory|factory pattern|factory method)", RegexOption.IGNORE_CASE)
+        private val PATTERN_STRATEGY    = Regex("(strategy|strategy pattern)", RegexOption.IGNORE_CASE)
+        private val PATTERN_OBSERVER    = Regex("(observer|observer pattern|listener|subscription)", RegexOption.IGNORE_CASE)
+        private val PATTERN_PROXY       = Regex("(proxy|proxy pattern)", RegexOption.IGNORE_CASE)
+        private val PATTERN_TEMPLATE    = Regex("(template|template method)", RegexOption.IGNORE_CASE)
 
         // ---- CRUD ----
         private val PATTERN_FIND_BY_ID  = Regex(
-            "(?:find|查找|查询|搜索|获取).*?(?:by|by\\s+id|根据|通过)" +
-            "|(?:根据|通过).*?(?:id|主键).*?(?:find|查找|查询|搜索|根据|获取)" +
-            "|按.*id.*(?:查找|查询|搜索|获取)",
+            "(?:find|look up|query|search|fetch).*?(?:by|by\\s+id|according to|via)" +
+            "|(?:according to|via).*?(?:id|primary key).*?(?:find|look up|query|search|according to|fetch)" +
+            "|by.*id.*(?:look up|query|search|fetch)",
             RegexOption.IGNORE_CASE
         )
         private val PATTERN_FIND_ALL    = Regex(
-            "(?:findAll|find.all|查询所有|全部|list.all|获取全部|批量查询|所有记录|全部数据|所有数据)",
+            "(?:findAll|find.all|query all|all|list.all|fetch all|batch query|all records|all data)",
             RegexOption.IGNORE_CASE
         )
         private val PATTERN_SAVE        = Regex(
-            "(?:save|保存|新增|创建|insert|添加|写入|新建)",
+            "(?:save|create|insert|add|write|new)",
             RegexOption.IGNORE_CASE
         )
         private val PATTERN_UPDATE      = Regex(
-            "(?:update|更新|修改|edit|编辑|变更)",
+            "(?:update|modify|edit|revise)",
             RegexOption.IGNORE_CASE
         )
         private val PATTERN_DELETE      = Regex(
-            "(?:delete|删除|移除|remove).*?(?:by|by\\s+id|根据|通过)?" +
-            "|(?:根据|通过).*?(?:id|主键).*?(?:delete|删除|移除)" +
-            "|按.*id.*(?:删除|移除)",
+            "(?:delete|remove).*?(?:by|by\\s+id|according to|via)?" +
+            "|(?:according to|via).*?(?:id|primary key).*?(?:delete|remove)" +
+            "|by.*id.*(?:delete|remove)",
             RegexOption.IGNORE_CASE
         )
         private val PATTERN_PAGE        = Regex(
-            "(?:page|分页|翻页|pagination|pageable|分页查询|列表分页)",
+            "(?:page|paging|pagination|pageable|page query|list paging)",
             RegexOption.IGNORE_CASE
         )
 
         // ---- Common Infrastructure ----
-        private val PATTERN_LOGGER      = Regex("(logger|log|日志|logging|记录日志|打日志|打印日志)", RegexOption.IGNORE_CASE)
-        private val PATTERN_AUTOWIRED   = Regex("(autowired|inject|注入|依赖注入|装配|自动注入)", RegexOption.IGNORE_CASE)
-        private val PATTERN_MAPPER      = Regex("(mapper|map|convert|转换|转化|映射|entity.*dto|dto.*entity|对象转换|类型转换|转化器)", RegexOption.IGNORE_CASE)
-        private val PATTERN_VALIDATE    = Regex("(validate|校验|验证|检查|validation|参数校验|数据校验)", RegexOption.IGNORE_CASE)
-        private val PATTERN_CONFIG      = Regex("(config|配置|configuration|@Bean|bean|注册)", RegexOption.IGNORE_CASE)
-        private val PATTERN_CACHE       = Regex("(cache|缓存|cacheable|@Cacheable)", RegexOption.IGNORE_CASE)
-        private val PATTERN_ASYNC       = Regex("(async|异步|@Async|并行)", RegexOption.IGNORE_CASE)
-        private val PATTERN_SCHEDULE    = Regex("(schedule|定时|调度|cron|@Scheduled|任务)", RegexOption.IGNORE_CASE)
-        private val PATTERN_THREAD_SAFE = Regex("(thread.safe|线程安全|synchronized|并发安全|lock)", RegexOption.IGNORE_CASE)
-        private val PATTERN_UTILITY     = Regex("(util|utility|helper|工具|辅助|静态方法)", RegexOption.IGNORE_CASE)
-        private val PATTERN_DTO         = Regex("(dto|vo|数据传输|视图对象|data.transfer)", RegexOption.IGNORE_CASE)
-        private val PATTERN_REST_API    = Regex("(rest|api|endpoint|接口|REST|web|controller)", RegexOption.IGNORE_CASE)
-        private val PATTERN_EXCEPTION   = Regex("(exception|异常|错误|error|自定义异常)", RegexOption.IGNORE_CASE)
-        private val PATTERN_ENUM        = Regex("(enum|枚举|常量|枚举类)", RegexOption.IGNORE_CASE)
-        private val PATTERN_TEST        = Regex("(test|测试|unit.test|单元测试|@Test)", RegexOption.IGNORE_CASE)
-        private val PATTERN_STREAM      = Regex("(stream|流|lambda|函数式|filter|map|collect)", RegexOption.IGNORE_CASE)
+        private val PATTERN_LOGGER      = Regex("(logger|log|logging|record log|write log|print log)", RegexOption.IGNORE_CASE)
+        private val PATTERN_AUTOWIRED   = Regex("(autowired|inject|injection|dependency injection|wire|auto-inject)", RegexOption.IGNORE_CASE)
+        private val PATTERN_MAPPER      = Regex("(mapper|map|convert|mapping|entity.*dto|dto.*entity|object conversion|type conversion|converter)", RegexOption.IGNORE_CASE)
+        private val PATTERN_VALIDATE    = Regex("(validate|check|validation|parameter validation|data validation)", RegexOption.IGNORE_CASE)
+        private val PATTERN_CONFIG      = Regex("(config|configuration|@Bean|bean|register)", RegexOption.IGNORE_CASE)
+        private val PATTERN_CACHE       = Regex("(cache|cacheable|@Cacheable)", RegexOption.IGNORE_CASE)
+        private val PATTERN_ASYNC       = Regex("(async|@Async|parallel)", RegexOption.IGNORE_CASE)
+        private val PATTERN_SCHEDULE    = Regex("(schedule|scheduled|cron|@Scheduled|task)", RegexOption.IGNORE_CASE)
+        private val PATTERN_THREAD_SAFE = Regex("(thread.safe|thread-safe|synchronized|concurrency-safe|lock)", RegexOption.IGNORE_CASE)
+        private val PATTERN_UTILITY     = Regex("(util|utility|helper|tool|auxiliary|static method)", RegexOption.IGNORE_CASE)
+        private val PATTERN_DTO         = Regex("(dto|vo|data transfer|view object|data.transfer)", RegexOption.IGNORE_CASE)
+        private val PATTERN_REST_API    = Regex("(rest|api|endpoint|interface|REST|web|controller)", RegexOption.IGNORE_CASE)
+        private val PATTERN_EXCEPTION   = Regex("(exception|error|custom exception)", RegexOption.IGNORE_CASE)
+        private val PATTERN_ENUM        = Regex("(enum|constant|enum class)", RegexOption.IGNORE_CASE)
+        private val PATTERN_TEST        = Regex("(test|unit.test|unit test|@Test)", RegexOption.IGNORE_CASE)
+        private val PATTERN_STREAM      = Regex("(stream|lambda|functional|filter|map|collect)", RegexOption.IGNORE_CASE)
     }
 
-    // ==================== 模式定义 ====================
+    // ==================== Pattern definitions ====================
 
-    /** 注释模式：匹配词 → 代码模板生成函数 */
+    /** Comment pattern: matching words → code template generator function */
     private val patterns: List<CommentPattern> = listOf(
         // ---- Logger ----
         CommentPattern(PATTERN_LOGGER) { match, ctx ->
@@ -128,7 +128,7 @@ class CommentAwareCompletion {
 
         // ---- Getter ----
         CommentPattern(PATTERN_GETTER) { match, ctx ->
-            // 字段名可能在 groups[1]、groups[2] 或 groups[3] 中，取决于匹配到的分支
+            // The field name may be in groups[1], groups[2], or groups[3], depending on which branch matched
             val fieldName = match.groups[1]?.value
                 ?: match.groups[2]?.value
                 ?: match.groups[3]?.value
@@ -144,7 +144,7 @@ class CommentAwareCompletion {
 
         // ---- Setter ----
         CommentPattern(PATTERN_SETTER) { match, ctx ->
-            // 字段名可能在 groups[1]、groups[2] 或 groups[3] 中
+            // The field name may be in groups[1], groups[2], or groups[3]
             val fieldName = match.groups[1]?.value
                 ?: match.groups[2]?.value
                 ?: match.groups[3]?.value
@@ -521,15 +521,15 @@ public static class Builder {
         },
     )
 
-    // ==================== 类型定义 ====================
+    // ==================== Type definitions ====================
 
-    /** 注释匹配到的模式 */
+    /** The pattern matched by a comment */
     data class CommentPattern(
         val regex: Regex,
         val generator: (MatchResult, CommentContext) -> List<CodeSuggestion>
     )
 
-    /** 代码建议 */
+    /** Code suggestion */
     data class CodeSuggestion(
         val name: String,
         val text: String,
@@ -537,7 +537,7 @@ public static class Builder {
         val description: String = ""
     )
 
-    /** 注释分析上下文 */
+    /** Comment analysis context */
     data class CommentContext(
         val commentText: String,
         val psiClass: PsiClass?,
@@ -547,22 +547,22 @@ public static class Builder {
     ) {
         val className: String get() = psiClass?.name ?: "Unknown"
 
-        /** 在 PSI 类中查找字段类型 */
+        /** Finds a field type in the PSI class */
         fun findFieldType(fieldName: String): String? {
             val cls = psiClass ?: return null
-            // 直接匹配
+            // Direct match
             val field = cls.fields.find { it.name.equals(fieldName, ignoreCase = true) }
             if (field != null) return field.type?.presentableText
-            // 模糊匹配
+            // Fuzzy match
             val fuzzy = cls.fields.find { it.name?.contains(fieldName, ignoreCase = true) == true }
             return fuzzy?.type?.presentableText
         }
     }
 
-    // ==================== 核心逻辑 ====================
+    // ==================== Core logic ====================
 
     /**
-     * 分析光标前的注释文本，返回匹配的代码建议。
+     * Analyzes the comment text before the caret and returns matching code suggestions.
      */
     fun analyzeComments(element: PsiElement, offset: Int): List<CodeSuggestion> {
         val commentText = extractCommentBefore(element, offset) ?: return emptyList()
@@ -585,36 +585,36 @@ public static class Builder {
             }
         }
 
-        // 如果有命中模式但无建议（如 getter 但字段不存在），返回空
+        // If patterns matched but produced no suggestions (e.g. getter but the field does not exist), return empty
         return allSuggestions
     }
 
     /**
-     * 检查光标位置是否在注释后（注释行后紧跟空行，光标在空行上）。
+     * Checks whether the caret is after a comment (a comment line followed immediately by a blank line, with the caret on the blank line).
      */
     fun isAfterComment(element: PsiElement, offset: Int): Boolean {
         val doc = (element.containingFile as? PsiJavaFile)?.viewProvider?.document ?: return false
         val lineNum = doc.getLineNumber(offset)
         if (lineNum <= 0) return false
 
-        // 检查前一行是否是注释
+        // Check whether the previous line is a comment
         for (i in lineNum - 1 downTo maxOf(0, lineNum - 5)) {
             val lineStart = doc.getLineStartOffset(i)
             val lineEnd = doc.getLineEndOffset(i)
             val lineText = doc.getText(com.intellij.openapi.util.TextRange(lineStart, lineEnd)).trim()
-            if (lineText.isEmpty()) continue // 跳过空行
+            if (lineText.isEmpty()) continue // Skip blank lines
             if (lineText.startsWith("//") || lineText.startsWith("*") || lineText.startsWith("/*") || lineText.startsWith("/**")) {
                 return true
             }
-            // 如果遇到非注释非空行，停止向上搜索
+            // Stop searching upward when a non-comment, non-blank line is encountered
             return false
         }
         return false
     }
 
     /**
-     * 获取光标前的最后一段注释文本。
-     * 支持：// 单行注释、/星 / 块注释、/星星 / 文档注释
+     * Gets the last block of comment text before the caret.
+     * Supports: line comments, block comments, and documentation comments
      */
     private fun extractCommentBefore(element: PsiElement, offset: Int): String? {
         val file = element.containingFile
@@ -624,14 +624,14 @@ public static class Builder {
 
         val sb = StringBuilder()
 
-        // 从光标行向上扫描，收集注释内容
+        // Scan upward from the caret line, collecting comment content
         for (i in lineNum - 1 downTo 0) {
             val lineStart = doc.getLineStartOffset(i)
             val lineEnd = doc.getLineEndOffset(i)
             val lineText = doc.getText(com.intellij.openapi.util.TextRange(lineStart, lineEnd)).trim()
 
             if (lineText.isEmpty()) {
-                // 遇到空行：如果是第一个空行继续，否则停止
+                // On a blank line: continue if it is the first blank line, otherwise stop
                 if (sb.isNotEmpty()) break
                 continue
             }
@@ -639,19 +639,19 @@ public static class Builder {
             if (lineText.startsWith("//")) {
                 sb.insert(0, lineText.removePrefix("//").trim() + " ")
             } else if (lineText.startsWith("*/") || lineText.startsWith("**/")) {
-                // 块注释结束，收集块内内容
+                // End of a block comment; collect the block contents
                 collectBlockComment(doc, i, sb)
                 break
             } else if (lineText.startsWith("*")) {
-                // Javadoc 或块注释中间行
+                // Javadoc or middle line of a block comment
                 sb.insert(0, lineText.removePrefix("*").trim() + " ")
             } else if (lineText.startsWith("/*") || lineText.startsWith("/**")) {
-                // 块注释开始行
+                // Start line of a block comment
                 val content = lineText.removePrefix("/**").removePrefix("/*").trimEnd('*').trimEnd('/').trim()
                 if (content.isNotEmpty()) sb.insert(0, content + " ")
                 break
             } else {
-                // 非注释代码行，停止
+                // Non-comment code line; stop
                 break
             }
         }
@@ -660,7 +660,7 @@ public static class Builder {
         return result.ifEmpty { null }
     }
 
-    /** 收集块注释/文档注释的全部内容 */
+    /** Collects the full contents of a block comment / documentation comment */
     private fun collectBlockComment(doc: com.intellij.openapi.editor.Document, endLine: Int, sb: StringBuilder) {
         for (i in endLine downTo 0) {
             val lineStart = doc.getLineStartOffset(i)
@@ -678,7 +678,7 @@ public static class Builder {
         }
     }
 
-    /** 构建注释上下文（从 PSI 元素提取类/方法/字段信息） */
+    /** Builds the comment context (extracts class/method/field information from the PSI element) */
     private fun buildContext(element: PsiElement): CommentContext {
         return CommentContext(
             commentText = "",
@@ -690,7 +690,7 @@ public static class Builder {
     }
 
     /**
-     * 将 CodeSuggestion 转换为 CompletionCandidate。
+     * Converts CodeSuggestion to CompletionCandidate.
      */
     fun toCompletionCandidates(suggestions: List<CodeSuggestion>): List<StaticAnalysisCompletionProvider.CompletionCandidate> {
         return suggestions.map { s ->
@@ -718,7 +718,7 @@ public static class Builder {
                     else -> com.intellij.icons.AllIcons.Nodes.Variable
                 },
                 description = s.description.ifEmpty { s.type },
-                relevanceScore = 0.95f // 注释匹配的优先级高
+                relevanceScore = 0.95f // Comment matches have high priority
             )
         }
     }

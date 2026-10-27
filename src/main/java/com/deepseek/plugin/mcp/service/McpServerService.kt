@@ -31,7 +31,7 @@ class McpServerService {
     init {
         // Schedule startup after IDE is fully initialized
         ApplicationManager.getApplication().invokeLater {
-            // 注册插件主题的 IDE 主题监听（FOLLOW 模式跟随 IDE）
+            // Register the plugin theme's IDE theme listener (FOLLOW mode follows the IDE)
             try {
                 com.deepseek.plugin.ui.PluginTheme.ensureIdeThemeListener()
             } catch (e: Exception) {
@@ -122,7 +122,7 @@ class McpServerService {
     private fun notify(title: String, content: String, type: NotificationType) {
         ApplicationManager.getApplication().invokeLater {
             NotificationGroupManager.getInstance()
-                .getNotificationGroup("DeepSeek AI CodeHelper")
+                .getNotificationGroup("DeepSeek-AI-Helper")
                 .createNotification(title, content, type)
                 .notify(null)
         }
